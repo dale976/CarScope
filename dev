@@ -1,0 +1,12 @@
+#!/bin/sh
+set -eu
+cd "$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+if [ -x .tools/bun ]; then
+  PATH="$PWD/.tools:$PATH"
+  export PATH
+fi
+if ! command -v bun >/dev/null 2>&1; then
+  echo 'Bun is required. Install it from https://bun.com/docs/installation' >&2
+  exit 1
+fi
+exec bun run dev

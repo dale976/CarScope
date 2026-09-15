@@ -1,0 +1,368 @@
+{
+  "asOf": "2026-09-14",
+  "source": "fictional",
+  "cars": [
+    {
+      "id": "lotus-410-01",
+      "make": "Lotus",
+      "model": "Exige",
+      "trim": "Sport 410",
+      "year": 2019,
+      "price": 64950,
+      "mileage": 18200,
+      "daysOnMarket": 43,
+      "color": "#d9ac31",
+      "paint": "Hethel Yellow",
+      "transmission": "Manual",
+      "location": "Bristol",
+      "features": [
+        "Air conditioning",
+        "Carbon seats",
+        "Carbon roof",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-02",
+          "price": 66950
+        },
+        {
+          "date": "2026-08-31",
+          "price": 64950
+        }
+      ],
+      "seller": "Bristol Performance (fictional)",
+      "description": "A fictional hethel yellow Lotus Exige Sport 410 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "lotus-410-02",
+      "make": "Lotus",
+      "model": "Exige",
+      "trim": "Sport 410",
+      "year": 2020,
+      "price": 68995,
+      "mileage": 12600,
+      "daysOnMarket": 21,
+      "color": "#709793",
+      "paint": "Metallic Green",
+      "transmission": "Manual",
+      "location": "Surrey",
+      "features": [
+        "Air conditioning",
+        "Carbon seats",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-24",
+          "price": 69995
+        },
+        {
+          "date": "2026-09-07",
+          "price": 68995
+        }
+      ],
+      "seller": "Surrey Performance (fictional)",
+      "description": "A fictional metallic green Lotus Exige Sport 410 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "lotus-430-01",
+      "make": "Lotus",
+      "model": "Exige",
+      "trim": "Cup 430",
+      "year": 2018,
+      "price": 74950,
+      "mileage": 24100,
+      "daysOnMarket": 68,
+      "color": "#d26542",
+      "paint": "Fire Red",
+      "transmission": "Manual",
+      "location": "Cheshire",
+      "features": [
+        "Air conditioning",
+        "Carbon seats",
+        "Titanium exhaust"
+      ],
+      "history": [
+        {
+          "date": "2026-07-08",
+          "price": 74950
+        }
+      ],
+      "seller": "Cheshire Performance (fictional)",
+      "description": "A fictional fire red Lotus Exige Cup 430 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "lotus-350-01",
+      "make": "Lotus",
+      "model": "Exige",
+      "trim": "Sport 350",
+      "year": 2017,
+      "price": 47995,
+      "mileage": 32100,
+      "daysOnMarket": 14,
+      "color": "#bdc3c6",
+      "paint": "Silver",
+      "transmission": "Manual",
+      "location": "Kent",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-31",
+          "price": 49995
+        },
+        {
+          "date": "2026-09-10",
+          "price": 47995
+        }
+      ],
+      "seller": "Kent Performance (fictional)",
+      "description": "A fictional silver Lotus Exige Sport 350 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "porsche-gt4-01",
+      "make": "Porsche",
+      "model": "Cayman",
+      "trim": "GT4 981",
+      "year": 2016,
+      "price": 63995,
+      "mileage": 28400,
+      "daysOnMarket": 35,
+      "color": "#598aab",
+      "paint": "Sapphire Blue",
+      "transmission": "Manual",
+      "location": "Oxfordshire",
+      "features": [
+        "Carbon seats",
+        "Sport exhaust",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-10",
+          "price": 64995
+        },
+        {
+          "date": "2026-09-03",
+          "price": 63995
+        }
+      ],
+      "seller": "Oxfordshire Performance (fictional)",
+      "description": "A fictional sapphire blue Porsche Cayman GT4 981 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "porsche-gt4-02",
+      "make": "Porsche",
+      "model": "Cayman",
+      "trim": "GT4 981",
+      "year": 2015,
+      "price": 61450,
+      "mileage": 34700,
+      "daysOnMarket": 57,
+      "color": "#bac1ba",
+      "paint": "GT Silver",
+      "transmission": "Manual",
+      "location": "Yorkshire",
+      "features": [
+        "Air conditioning",
+        "Sport exhaust",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-07-19",
+          "price": 61450
+        }
+      ],
+      "seller": "Yorkshire Performance (fictional)",
+      "description": "A fictional gt silver Porsche Cayman GT4 981 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "ferrari-01",
+      "make": "Ferrari",
+      "model": "458",
+      "trim": "Italia",
+      "year": 2012,
+      "price": 139950,
+      "mileage": 19500,
+      "daysOnMarket": 18,
+      "color": "#4277b4",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Hampshire",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-27",
+          "price": 141950
+        },
+        {
+          "date": "2026-09-08",
+          "price": 139950
+        }
+      ],
+      "seller": "Hampshire Performance (fictional)",
+      "description": "Entirely fictional Ferrari 458 Italia for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "aston-martin-01",
+      "make": "Aston Martin",
+      "model": "Vantage",
+      "trim": "V8",
+      "year": 2019,
+      "price": 72950,
+      "mileage": 16800,
+      "daysOnMarket": 31,
+      "color": "#a4adb9",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Edinburgh",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-14",
+          "price": 73950
+        },
+        {
+          "date": "2026-09-04",
+          "price": 72950
+        }
+      ],
+      "seller": "Edinburgh Performance (fictional)",
+      "description": "Entirely fictional Aston Martin Vantage V8 for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "bentley-01",
+      "make": "Bentley",
+      "model": "Continental GT",
+      "trim": "V8",
+      "year": 2016,
+      "price": 59950,
+      "mileage": 35600,
+      "daysOnMarket": 24,
+      "color": "#9fb4bf",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Manchester",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-21",
+          "price": 59950
+        }
+      ],
+      "seller": "Manchester Performance (fictional)",
+      "description": "Entirely fictional Bentley Continental GT V8 for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "mclaren-01",
+      "make": "McLaren",
+      "model": "570S",
+      "trim": "Coupe",
+      "year": 2017,
+      "price": 82950,
+      "mileage": 23400,
+      "daysOnMarket": 52,
+      "color": "#d99153",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Cambridge",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-07-24",
+          "price": 84950
+        },
+        {
+          "date": "2026-08-28",
+          "price": 82950
+        }
+      ],
+      "seller": "Cambridge Performance (fictional)",
+      "description": "Entirely fictional McLaren 570S Coupe for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "maserati-01",
+      "make": "Maserati",
+      "model": "GranTurismo",
+      "trim": "Sport",
+      "year": 2015,
+      "price": 36950,
+      "mileage": 22300,
+      "daysOnMarket": 12,
+      "color": "#d9d5cd",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Nottingham",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-09-02",
+          "price": 37950
+        },
+        {
+          "date": "2026-09-10",
+          "price": 36950
+        }
+      ],
+      "seller": "Nottingham Performance (fictional)",
+      "description": "Entirely fictional Maserati GranTurismo Sport for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    },
+    {
+      "id": "lamborghini-01",
+      "make": "Lamborghini",
+      "model": "Huracan",
+      "trim": "LP 610-4",
+      "year": 2015,
+      "price": 134950,
+      "mileage": 48600,
+      "daysOnMarket": 39,
+      "color": "#ae4943",
+      "paint": "Demo metallic",
+      "transmission": "Automatic",
+      "location": "Bath",
+      "features": [
+        "Air conditioning",
+        "Full service history"
+      ],
+      "history": [
+        {
+          "date": "2026-08-06",
+          "price": 134950
+        }
+      ],
+      "seller": "Bath Performance (fictional)",
+      "description": "Entirely fictional Lamborghini Huracan LP 610-4 for software testing. Specification, prices and history are invented; this is not a real advert.",
+      "fuel": "Petrol"
+    }
+  ]
+}
