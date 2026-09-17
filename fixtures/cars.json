@@ -156,7 +156,9 @@
       ],
       "seller": "Oxfordshire Performance (fictional)",
       "description": "A fictional sapphire blue Porsche Cayman GT4 981 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
-      "fuel": "Petrol"
+      "fuel": "Petrol",
+      "generation": "981",
+      "derivative": "GT4"
     },
     {
       "id": "porsche-gt4-02",
@@ -184,7 +186,9 @@
       ],
       "seller": "Yorkshire Performance (fictional)",
       "description": "A fictional gt silver Porsche Cayman GT4 981 created for the CarScope prototype. Specification, price and history are sample data; no actual vehicle is being offered for sale.",
-      "fuel": "Petrol"
+      "fuel": "Petrol",
+      "generation": "981",
+      "derivative": "GT4"
     },
     {
       "id": "ferrari-01",

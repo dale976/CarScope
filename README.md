@@ -64,11 +64,11 @@ No `.env` file or keys are needed. To customize local settings, copy `.env.examp
 | `HOST` | `127.0.0.1` | Local-only by default. |
 | `PORT` | `3000` | Valid integer 1–65535. |
 | `CAR_CACHE_PATH` | `.cache/cars.json` | Local normalized snapshot path, relative to project root unless absolute. |
-| `MARKETCHECK_API_KEY` | empty | Reserved server-only placeholder; never used to make requests. |
+| `MARKETCHECK_API_KEY` | empty | Server-only key for the explicitly enabled manual count command. |
 | `DVLA_API_KEY` | empty | Reserved server-only placeholder. |
 | `DVSA_CLIENT_ID`, `DVSA_CLIENT_SECRET`, `DVSA_API_KEY`, `DVSA_TOKEN_URL`, `DVSA_SCOPE` | empty | Reserved server-only OAuth/API configuration placeholders. |
 
-**Live provider adapters are deliberately not implemented in V1.** Adding a key cannot trigger a request. The backend has no outbound fetch and never falls back to a provider on a cache miss. This is stronger than a guessed request budget: a local counter cannot establish how much free quota is left in an account. No provider accounts were created and no free or paid car-data calls were made during development.
+**The web app has no live provider adapter.** Adding a key cannot trigger a request. The backend has no outbound fetch and never falls back to a provider on a cache miss. This is stronger than a guessed request budget: a local counter cannot establish how much free quota is left in an account. No provider accounts were created and no free or paid car-data calls were made during development.
 
 Keys belong only in an ignored server `.env`; never add `PUBLIC_`/`VITE_` key variables or embed them in fixtures. `.env*`, caches, dependencies and build output are ignored by Git. The API emits only explicitly allowed data fields, never environment settings or arbitrary imported properties.
 
@@ -94,7 +94,7 @@ DATA_MODE=cache bun run dev
 
 The top level is `{ "asOf": "YYYY-MM-DD", "source": "imported", "cars": [...] }`. Dates must be real ISO dates; IDs unique; prices positive integer GBP; mileage and days non-negative integers; history ascending, not later than `asOf`, with the final asking price matching the current price. Use `#RRGGBB` colors for local illustrations. The importer accepts at most 20 MB / 10,000 listings. Do not include personal seller information or secrets.
 
-Before a future live adapter is introduced, verify current API contracts, data-display/cache rights and an account-level hard billing stop. Free-tier marketing or a request counter alone is insufficient. DVLA/DVSA are not wired into this search prototype.
+Before extending live access, verify current API contracts, data-display/cache rights and account billing settings. Free-tier marketing or a request counter alone is insufficient. DVLA/DVSA are not wired into this search prototype.
 
 ## Architecture
 
@@ -142,3 +142,39 @@ DATA_MODE=cache CAR_CACHE_PATH=.cache/supplier-sample.json PORT=4317 ./dev
 ```
 
 This sample is for private local evaluation at the user's direction; no public-display or redistribution rights are asserted. Imported data stays in ignored `.cache/`. The snapshot date comes from `status_date`. Only a single price observation is recorded: the CSV contains no historical price series. Generic illustrations are not listing photographs or verified paint representations. Missing required fields fail import rather than becoming zero values. Mock mode remains the default; no provider calls occur.
+
+## £10 development allowance
+
+The web app remains offline by default. A separate manual count probe is available:
+
+```sh
+MARKETCHECK_LIVE_ENABLED=true bun run marketcheck:count Porsche
+```
+
+Set `MARKETCHECK_API_KEY` in ignored `.env` first. The command makes exactly one UK active-inventory request with `rows=0`; no retries, redirects or stored responses. It prints only the count. Do not route expensive valuation endpoints through this guard.
+
+`src/server/budget.ts` fixes a cumulative £10 allowance, reserving **2p before each attempt**, including failures and calls covered by free quota. This is conservative against the published Starter standard-search rate of £0.012/call (check pricing before use). At most 500 attempts are allowed. SQLite accounting in ignored `.budget/marketcheck.sqlite` survives restarts and uses atomic updates across processes. Missing/corrupt accounting blocks requests. Never delete/reset this ledger to recover allowance; reconcile it with the supplier dashboard first. A fresh checkout requires deliberate ledger provisioning, not automatic initialization on first request.
+
+This is a local estimated-spend guard, **not a MarketCheck account billing cap**. It cannot cover portal/MCP/connector requests, another checkout, changed tariffs or other account fees. No automatic monthly reset. Keep supplier usage alerts enabled. The default UI and tests still make no provider calls.
+
+## Offline sample photos
+
+Lotus, Porsche, Ferrari and Bentley cards/details use local Creative Commons sample photographs, with creator/license credits. Other marques and failed image loads retain the SVG fallback. Photos are illustrative and may differ in year, paint or specification. See `src/client/assets/cars/credits.json` for source and licensing; no MarketCheck images or image API calls are used.
+
+## Expanded enthusiast catalogue and precise search
+
+The user-supplied tour list now defines eligibility in `src/shared/catalogue.ts`. All-model marques and model/derivative-specific rules are separate; this is not an official endorsement. Names are normalized for eligibility; ambiguous performance badges fail closed. Supplier naming variants may need explicit additions as live coverage is audited. The CSV importer uses the same rules; existing imported snapshots are not rewritten.
+
+Search combines text with make, model, generation, derivative, inclusive year bounds and transmission. Dependent options reflect the local eligible inventory; catalogue marques without fixtures currently return no results. Generation is optional and never inferred from year; select Unknown for missing metadata. Changing a parent filter clears its children. URL links, browser navigation and saved searches preserve criteria.
+
+Fourteen additional fictional examples bring the default demo to 26 cars, including Porsche 911 generations, Supra, RX-7, NSX, Audi RS6, BMW M3 and Mustang GT. Original Cayman fixtures explicitly declare 981 / GT4. API query fields added: `model`, `generation`, `derivative`, `minYear`, `maxYear`, `transmission`. No provider requests are made.
+
+## Controlled live browser preview
+
+Open `/live` on the local server. The default demo remains offline. Opening the preview reads only local key availability and spend accounting; changing fields makes no calls. Pressing Search requests ten provider listings (make/model/transmission); opening details requests one listing. Pagination and reopening details incur another reservation. No polling, retries, live response persistence or browser storage. Responses stay in component memory for the displayed search and disappear on reload. The UI uses dealer image URLs, never MarketCheck cached-image URLs.
+
+Each inventory/detail attempt reserves 2p against the same cumulative £10 ledger. Loopback host and same-origin JSON POST checks guard paid operations. This is a single-user local development preview, not an authenticated production service. Do not expose it publicly. Budget status is local estimated accounting, not actual supplier billing. Start with one Porsche / 911 search and one detail: 4p reserved. No generation inference or automatic equipment extraction is performed.
+
+## Integrated live discovery
+
+Live cars now shares the main app navigation, hero, sidebar and result styling at `/live`. Demo cars, demo watchlists and demo alerts remain explicitly labelled. Opening/switching modes does not submit provider requests. Leaving live mode discards transient results; returning requires an explicit new search. Browser Back switches modes without a paid call. Live equipment matching, generation filters, watches and alerts are not implemented yet.

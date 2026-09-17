@@ -1,7 +1,23 @@
-import { useId } from 'react';
+import { useId, useState } from 'react';
+import lotus from './assets/cars/lotus.jpg';
+import porsche from './assets/cars/porsche.jpg';
+import ferrari from './assets/cars/ferrari.jpg';
+import bentley from './assets/cars/bentley.jpg';
+import credits from './assets/cars/credits.json';
+const photos: Record<string, {src: string; file: string}> = {Lotus:{src:lotus,file:'lotus.jpg'}, Porsche:{src:porsche,file:'porsche.jpg'}, Ferrari:{src:ferrari,file:'ferrari.jpg'}, Bentley:{src:bentley,file:'bentley.jpg'}};
 import type { Car } from '../shared/types';
 // Original local vector illustration, not a photograph of the advertised vehicle.
 export function CarArt({car, large = false}: {car: Car; large?: boolean}) {
+  const [failed, setFailed] = useState<string | null>(null);
+  const photo = photos[car.make];
+  const credit = credits.find(c => c.file === photo?.file);
+  if (photo && credit && failed !== photo.src) return <figure className={`car-photo ${large ? 'large' : ''}`}>
+    <div className="car-photo-frame"><img src={photo.src} alt={`${car.make} sample photograph; not the advertised vehicle or exact specification`} loading={large ? 'eager' : 'lazy'} decoding="async" onError={() => setFailed(photo.src)}/><span className="photo-label">SAMPLE PHOTOGRAPH</span></div>
+    <figcaption>{large ? <><a href={credit.source} target="_blank" rel="noreferrer">Photo: {credit.photographer}</a> · <a href={credit.licenseUrl} target="_blank" rel="noreferrer">{credit.license}</a> · Cropped for display</> : <>Photo: {credit.photographer} · {credit.license}</>}</figcaption>
+  </figure>;
+  return <Illustration car={car} large={large}/>;
+}
+function Illustration({car, large = false}: {car: Car; large?: boolean}) {
   const finish = useId().replace(/:/g,'');
   const coupe = ['BMW','Toyota'].includes(car.make);
   return <div className={`car-art ${large ? 'large' : ''}`} style={{'--car-color':car.color} as React.CSSProperties}>

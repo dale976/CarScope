@@ -6,3 +6,9 @@ dist/
 .cache/
 .DS_Store
 .tools/
+
+# Persistent local spend accounting (not provider data)
+.budget/
+
+# Local IDE settings
+.idea/

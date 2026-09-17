@@ -1,3 +1,4 @@
+import expanded from '../../fixtures/expanded-cars.json';
 import fixture from '../../fixtures/cars.json';
 import response from '../../fixtures/marketcheck/uk-active.json';
 import { normalizeMockInventory } from './marketcheck';
@@ -26,6 +27,8 @@ export function validateDataset(value: unknown): Dataset {
       if (!Number.isSafeInteger(c[key]) || c[key] < 0) return fail();
     }
     if (c.price === 0 || c.year < 1900 || c.year > Number(d.asOf.slice(0,4)) + 1) return fail();
+    for (const key of ['generation','derivative'] as const) if(c[key] !== undefined && (typeof c[key] !== 'string' || !c[key]!.trim() || c[key]!.length>100)) return fail();
+    if(c.engineCylinders!==undefined && (!Number.isSafeInteger(c.engineCylinders)||c.engineCylinders<1||c.engineCylinders>16)) return fail();
     if (!Array.isArray(c.features) || c.features.some(f => typeof f !== 'string' || f.length > 200)) return fail();
     if (!Array.isArray(c.history) || !c.history.length) return fail();
     let previousDate = '';
@@ -37,14 +40,14 @@ export function validateDataset(value: unknown): Dataset {
   }
   // Copy only the public normalized fields. Unknown properties (including secrets) never reach the API.
   return { asOf: d.asOf, source: d.source, cars: d.cars.map(c => ({
-    id:c.id, make:c.make, model:c.model, trim:c.trim, year:c.year, price:c.price,
+    generation:c.generation, derivative:c.derivative, engineCylinders:c.engineCylinders, id:c.id, make:c.make, model:c.model, trim:c.trim, year:c.year, price:c.price,
     mileage:c.mileage, daysOnMarket:c.daysOnMarket, color:c.color, paint:c.paint,
     transmission:c.transmission, location:c.location, fuel:c.fuel, seller:c.seller,
     description:c.description, features:[...c.features], history:c.history.map(p => ({date:p.date,price:p.price}))
   })) };
 }
 export async function loadData(config: Config): Promise<Dataset> {
-  if (config.mode === 'mock') return validateDataset(normalizeMockInventory(response, fixture));
+  if (config.mode === 'mock') return validateDataset({...normalizeMockInventory(response, fixture), cars:[...normalizeMockInventory(response, fixture).cars,...expanded.cars]});
   try {
     const file = Bun.file(config.cachePath);
     if (file.size > 20 * 1024 * 1024) throw new Error('Too large');

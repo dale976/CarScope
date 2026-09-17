@@ -1,3 +1,4 @@
+import {eligible} from '../shared/catalogue';
 import {validateDataset} from './data';
 import type {Dataset} from '../shared/types';
 /** RFC-style quoted fields, including embedded newlines and escaped quotes. */
@@ -19,10 +20,10 @@ export function parseCsv(text:string):Record<string,string>[] {
  const headers=rows.shift();if(!headers?.length||new Set(headers).size!==headers.length)throw new Error('Missing or duplicate CSV headers');
  return rows.map((r,i)=>{if(r.length!==headers.length)throw new Error(`CSV row ${i+2} has the wrong column count`);return Object.fromEntries(headers.map((h,j)=>[h,r[j]!]));});
 }
-const makes=new Set(['lotus','porsche','ferrari','aston martin','bentley','mclaren','maserati','lamborghini']);
+
 export function importPrestigeCsv(text:string):Dataset {
- const rows=parseCsv(text).filter(r=>makes.has((r.make??'').trim().toLowerCase()));
- if(!rows.length)throw new Error('No selected prestige marques found');
+ const rows=parseCsv(text).filter(r=>eligible({make:r.make??'',model:r.model??'',trim:r.variant??''}));
+ if(!rows.length)throw new Error('No eligible enthusiast cars found');
  const required=(r:Record<string,string>,k:string)=>{const value=r[k]?.trim();if(!value)throw new Error(`Missing ${k} for ${r.id??'listing'}`);return value;};
  const numeric=(r:Record<string,string>,k:string)=>{const value=required(r,k);if(!/^\d+$/.test(value))throw new Error(`Invalid ${k} for ${r.id}`);return Number(value);};
  const dates=rows.map(r=>required(r,'status_date').slice(0,10));

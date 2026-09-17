@@ -1,4 +1,5 @@
 export interface Car {
+  generation?: string; derivative?: string; engineCylinders?: number;
   id: string; make: string; model: string; trim: string; year: number;
   price: number; mileage: number; daysOnMarket: number; color: string; paint: string;
   transmission: string; location: string; fuel: string; seller: string; description: string;
@@ -6,5 +7,5 @@ export interface Car {
 }
 export interface Dataset { asOf: string; source: 'fictional' | 'imported'; cars: Car[] }
 export interface Status { mode: 'mock' | 'cache'; asOf: string; source: Dataset['source']; liveRequestsEnabled: false }
-export interface SearchResult { cars: Car[]; total: number; makes: string[]; features: string[]; asOf: string; source: Dataset['source'] }
+export interface SearchResult { cars: Car[]; total: number; models: string[]; generations: string[]; derivatives: string[]; makes: string[]; features: string[]; asOf: string; source: Dataset['source'] }
 export interface DetailResult { car: Car; comparables: Car[]; asOf: string; source: Dataset['source'] }

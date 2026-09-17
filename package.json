@@ -14,7 +14,8 @@
     "typecheck": "bun --bun tsc --noEmit",
     "check": "bun run typecheck && bun test && bun run build",
     "cache:import": "bun scripts/import-cache.ts",
-    "smoke": "bun scripts/smoke.ts"
+    "smoke": "bun scripts/smoke.ts",
+    "marketcheck:count": "bun scripts/marketcheck-count.ts"
   },
   "dependencies": {
     "react": "^19.1.0",
