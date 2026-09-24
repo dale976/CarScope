@@ -12,3 +12,9 @@ dist/
 
 # Local IDE settings
 .idea/
+
+# Private local report examples
+.local/
+
+# Local visual brainstorming sessions
+.superpowers/
