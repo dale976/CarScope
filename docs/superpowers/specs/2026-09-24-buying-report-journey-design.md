@@ -117,10 +117,13 @@ The visitor explicitly submits a registration while Live is selected. The server
 4. Projects a `VehiclePreview` response containing only identification and preview-safe fields.
 5. Returns no raw supplier payload and no provider credential.
 
+The server retains the raw vehicle-details result in a short-lived in-memory preview session under a cryptographically random `previewId`. The session expires after 30 minutes and disappears on server restart. The browser receives the ID and normalized preview only. This is transient request coordination, not completed-report persistence or a supplier-data archive.
+
 `VehiclePreview` contains:
 
 ```ts
 type VehiclePreview = {
+  previewId: string;
   registration: string;
   vehicle: {
     name: string;
@@ -153,7 +156,7 @@ If `VehicleDetailsWithImage` does not return MOT record counts, the preview omit
 
 ### Complete report
 
-The visitor deliberately activates the complete-report action. In Live mode the server makes exactly three concurrent requests, without retries:
+The visitor deliberately activates the complete-report action using the `previewId`. The server rejects missing, expired, registration-mismatched or mode-mismatched preview sessions before any supplier request. In Live mode it then makes exactly three concurrent requests, without retries:
 
 - `VDICheck`
 - `ValuationDetails`
@@ -161,7 +164,7 @@ The visitor deliberately activates the complete-report action. In Live mode the 
 
 The result is merged with the previously obtained vehicle-details payload and normalized into the existing `BuyingReport` model. Vehicle details are the required identity anchor. Each of the other three packages may fail independently; the report still opens using successful sections and records the missing package under sources and gaps.
 
-The server coalesces concurrent identical requests. Completed live responses are not persisted in this phase. The client retains the resulting report only for the current page session.
+The server coalesces concurrent identical requests. Completed live responses are not persisted in this phase. The client retains the resulting report only for the current page session. Preview sessions expire after 30 minutes, are held in process memory only and never contain API keys.
 
 ## API shape
 
@@ -170,10 +173,16 @@ The journey uses separate operations rather than the current all-in-one lookup:
 - `POST /api/report-preview`
 - `POST /api/report-generate`
 
-Each request body contains a normalized-mode choice and registration:
+The preview request body contains a normalized-mode choice and registration:
 
 ```json
 {"registration":"LD17VAE","mode":"mock"}
+```
+
+The generation request also carries the opaque preview ID returned by the first operation:
+
+```json
+{"registration":"LD17VAE","mode":"mock","previewId":"a-random-server-issued-value"}
 ```
 
 Supplier calls require POST, a loopback host and same-origin request metadata in this development phase. GET requests never initiate supplier spending. Unsupported methods return `405`; invalid registrations return `400`; unsupported mock registrations return `404`; unavailable provider configuration returns `503`; a supplier identity failure returns `422` with a safe message.
