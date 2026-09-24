@@ -52,12 +52,12 @@ export function ReportView({report}:{report:BuyingReport}) {
  return <article className="report" aria-labelledby="report-title">
   {report.kind==='fictional-sample'&&<div className="sample-note"><span className="status-dot"/> Fictional sample — no vehicle checks have been performed.</div>}
   <header className="report-heading"><div><p className="eyebrow">Your buying brief</p><h1 id="report-title">The facts behind<br/><em>the car.</em></h1><p className="report-purpose">A structured view of the vehicle, its recorded history and the costs you can establish before viewing it.</p></div><span className="report-stamp">CARSCOPE<br/>BUYING REPORT<br/><b>EXAMPLE / 001</b></span></header>
-  {report.detail?.image&&<VehiclePortrait detail={report.detail} name={report.vehicle.name}/>} 
+  {report.detail?.image&&<VehiclePortrait detail={report.detail} name={report.vehicle.name}/>}
   <section className="vehicle-bar" aria-label="Vehicle identified"><div><p className="eyebrow">Vehicle identified</p><div className="vehicle-bar-title"><h2>{report.vehicle.name}</h2></div><p>{report.vehicle.year} <span aria-hidden="true">/</span> {report.vehicle.mileage===null?'Mileage unavailable':<>{report.vehicle.mileage.toLocaleString('en-GB')} miles <span aria-hidden="true">/</span> {mileageSource}</>}</p></div>{report.registration&&<div className="vehicle-registration"><span>Registration</span><strong>{registrationLabel(report.registration)}</strong></div>}</section>
   <RecordOverview report={report}/>
   <Chapter number="01" title="Vehicle details" intro="The model specifications and practical facts returned for this vehicle.">
-   {report.detail&&<VehicleFacts detail={report.detail}/>} 
-   {report.ev&&<EvSection ev={report.ev}/>} 
+   {report.detail&&<VehicleFacts detail={report.detail}/>}
+   {report.ev&&<EvSection ev={report.ev}/>}
    {report.evidence&&(report.evidence.tyres.length>0?<section className="data-card"><div className="data-card-heading"><div><p className="eyebrow">Tyre fitment</p><h3>Tyre sizes for this model</h3></div><p><strong>Why this matters</strong> Correct size, rating and pressure affect replacement cost, safety and availability.</p></div>{report.evidence.tyres.map(t=><div className="tyre-row" key={`${t.axle}-${t.size}`}><div><span>{t.axle}</span><strong>{t.size} · {t.rating}</strong></div><small>{t.runFlat===true?'Run-flat':t.runFlat===false?'Not run-flat':'Run-flat status unavailable'}{t.pressure?` · ${t.pressure}`:''}</small></div>)}<p className="action-note"><strong>What to do next</strong> Confirm these model fitments against the tyres actually fitted and inspect their condition.</p></section>:<section className="data-card"><h3>Tyre fitment</h3><p className="empty-data">Tyre fitment unavailable in the supplied data.</p></section>)}
   </Chapter>
   <Chapter number="02" title="History and mileage" intro="Recorded events and mileage evidence, shown in date order without filling gaps in the record.">
