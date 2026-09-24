@@ -1,0 +1,17 @@
+{
+  "name": "@carscope/search",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "sh ../../scripts/bun.sh scripts/workspace.ts dev search",
+    "start": "sh ../../scripts/bun.sh scripts/start.ts search",
+    "build": "sh ../../scripts/bun.sh scripts/workspace.ts build search",
+    "test": "sh ../../scripts/bun.sh test apps/search/tests",
+    "typecheck": "sh ../../scripts/bun.sh --bun tsc --noEmit -p apps/search/tsconfig.json"
+  },
+  "dependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "@carscope/ui": "workspace:*"
+  }
+}

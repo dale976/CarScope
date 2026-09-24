@@ -2,6 +2,9 @@ import {expect,test} from 'bun:test';
 import {coverageForReport,projectReportPreview,statusCopy} from '../src/shared/preview';
 import type {BuyingReport} from '../src/shared/report';
 import {loadMockReport} from '../src/server/mock-reports';
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
+import {join} from 'node:path';
+import {tmpdir} from 'node:os';
 
 const report={kind:'sandbox-example',registration:'SL60AUC',vehicle:{name:'Fiat 500',year:2010,mileage:90000,askingPrice:null},detail:{registered:'2010-09-10',keepers:[],colour:'Red',engine:'1.2-litre · Petrol',transmission:'5-speed Manual'},motStatus:{status:'valid',expiry:'2027-01-01',source:'supplier'},findings:[],checks:[],costs:[],sellerQuestions:[],evidence:{mot:[{date:'2026-01-01',mileage:90000,expiry:'2027-01-01',result:'pass'}],tyres:[],notes:[]}} satisfies BuyingReport;
 
@@ -23,10 +26,17 @@ test('coverage identifies a later UK record for an older vehicle',()=>{
 });
 
 test('mock reports resolve exact known registrations and reject path-like input',()=>{
- expect(loadMockReport('LD17 VAE').vehicle.name).toBe('Tesla Model X 75D');
- expect(loadMockReport('DF74 FPA').registration).toBe('DF74FPA');
- expect(loadMockReport('SL60 AUC').registration).toBe('SL60AUC');
- expect(()=>loadMockReport('../../tesla')).toThrow('Mock vehicle unavailable');
+ const root=mkdtempSync(join(tmpdir(),'carscope-mock-'));mkdirSync(join(root,'.local'));
+ const fixture=(name:string,registration?:string)=>({kind:'sandbox-example',...(registration?{registration}:{}),vehicle:{name,year:2020,mileage:null,askingPrice:null},findings:[],checks:[],costs:[],sellerQuestions:[]});
+ try{
+  writeFileSync(join(root,'.local/tesla-report.json'),JSON.stringify(fixture('Tesla Model X 75D','LD17VAE')));
+  writeFileSync(join(root,'.local/porsche-report.json'),JSON.stringify(fixture('Porsche 718 Boxster')));
+  writeFileSync(join(root,'.local/fiat-report.json'),JSON.stringify(fixture('Fiat 500 Pop')));
+  expect(loadMockReport('LD17 VAE',root).vehicle.name).toBe('Tesla Model X 75D');
+  expect(loadMockReport('DF74 FPA',root).registration).toBe('DF74FPA');
+  expect(loadMockReport('SL60 AUC',root).registration).toBe('SL60AUC');
+  expect(()=>loadMockReport('../../tesla',root)).toThrow('Mock vehicle unavailable');
+ }finally{rmSync(root,{recursive:true,force:true});}
 });
 
 test('an old supplier tax observation is dated rather than called current',()=>{

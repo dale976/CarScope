@@ -1,7 +1,13 @@
 import {ROOT} from '../../../scripts/workspace';
+import {sampleReport} from '../fixtures/sample-report';
+import {mkdtempSync,mkdirSync,rmSync,writeFileSync} from 'node:fs';
+import {join,resolve} from 'node:path';
+import {tmpdir} from 'node:os';
 const port=49000+Math.floor(Math.random()*10000);
 const base=new URL(`http://127.0.0.1:${port}`);
-const child=Bun.spawn([process.execPath,'scripts/start.ts','buying-report'],{cwd:ROOT,env:{...process.env,HOST:'127.0.0.1',REPORT_PORT:String(port)},stdout:'ignore',stderr:'pipe'});
+const fixtureRoot=mkdtempSync(join(tmpdir(),'carscope-smoke-'));mkdirSync(join(fixtureRoot,'.local'));
+writeFileSync(join(fixtureRoot,'.local/tesla-report.json'),JSON.stringify({...sampleReport,kind:'sandbox-example',registration:'LD17VAE',vehicle:{...sampleReport.vehicle,name:'Tesla Model X 75D',year:2017,askingPrice:null}}));
+const child=Bun.spawn([process.execPath,'index.js'],{cwd:resolve(ROOT,'apps/buying-report/dist'),env:{...process.env,CARSCOPE_ROOT:fixtureRoot,HOST:'127.0.0.1',REPORT_PORT:String(port),NODE_ENV:'production'},stdout:'ignore',stderr:'pipe'});
 async function check(path:string){const r=await fetch(new URL(path,base));if(!r.ok)throw new Error(`${path}: ${r.status}`);return r;}
 async function post(path:string,body:unknown){const r=await fetch(new URL(path,base),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});if(!r.ok)throw new Error(`${path}: ${r.status} ${await r.text()}`);return r.json();}
 try{
@@ -25,4 +31,4 @@ try{
  }
  if((await fetch(new URL('/missing',base))).status!==404)throw new Error('Missing route should be 404');
  console.log('Report smoke passed: built route/assets and staged Mock journey, with no external calls.');
-}finally{child.kill();await child.exited;}
+}finally{child.kill();await child.exited;rmSync(fixtureRoot,{recursive:true,force:true});}

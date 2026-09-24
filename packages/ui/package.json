@@ -1,0 +1,9 @@
+{
+  "name": "@carscope/ui",
+  "private": true,
+  "type": "module",
+  "exports": "./src/BrandMark.tsx",
+  "peerDependencies": {
+    "react": "^19.1.0"
+  }
+}
