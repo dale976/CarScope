@@ -1,23 +1,49 @@
-# CarScope V1 design and implementation plan
+# CarScope workspace architecture
 
-A local UK enthusiast-car research prototype: React + TypeScript, served by Bun's HTML bundler and a Bun HTTP API. No Node runtime, framework server, database, hosted services or external image/font requests.
+Two independent React/TypeScript applications use Bun’s HTML bundler and HTTP server. Root commands retain the existing search workflow and add a buying-report workflow.
 
-## Scope and decisions
-Search by text, make, maximum price, maximum mileage and required features; sort results. Car detail includes asking price, mileage, advertised days, dated asking-price history and same-model comparables. Watchlists and saved-search alert stubs persist in browser localStorage; no scheduled checks or notifications occur.
+## Boundaries
 
-Mock mode is default. Fixtures are explicitly fictional and dated, never advertised as live stock. Cache mode reads a validated local snapshot; missing/invalid cache fails visibly without falling back to a network call. Live mode is deliberately unsupported because a local request limit cannot prove a provider account has free quota left. Environment keys are server-only placeholders for a future reviewed integration. No outbound fetch exists in the backend.
+- `apps/search` owns enthusiast listings, MarketCheck live preview, filtering, detail views, watch stubs, fixture adapters and search tests.
+- `apps/buying-report` owns the consumer report model, fixed fictional example, frontend, same-origin sample endpoint and report tests. It does not import search logic or provider clients.
+- `packages/ui` exports the existing BrandMark. It has no app dependency. Extract further shared controls only when both products use them.
+- `scripts/workspace.ts` selects the app, resolves repository paths and starts/builds child Bun processes. `scripts/bun.sh` locates the project-local Bun binary for IDE/npm commands.
 
-## Structure and implementation sequence
-1. `src/shared/types.ts`, `fixtures/cars.json`: normalized listings and fixed reference date.
-2. `src/server/config.ts`, `data.ts`, `search.ts`, `api.ts`: reject live mode, validate and read datasets, search/filter and compare, JSON error handling. Tests in `tests/api.test.ts` cover cost guard, searches, invalid input, details, isolation from external fetch and cache failures.
-3. `src/client/`: responsive cream/ink/vermillion editorial UI; illustrated cars are local SVG, clearly marked as illustrations. URL-backed search and detail links. Loading, empty and error states; keyboard-accessible controls.
-4. `scripts/import-cache.ts`: explicitly import and validate an existing normalized JSON response snapshot without requests; atomic local cache write.
-5. README, environment example, Bun scripts and lockfile; run unit tests, TypeScript, production build and browser smoke checks before delivery.
+## Runtime and state
 
-## API
-GET /api/status: mode, snapshot date and disabled live access.
-GET /api/cars?q=&make=&maxPrice=&maxMileage=&features=&sort=: filtered normalized listings.
-GET /api/cars/:id: listing plus same-make/model comparables (up to four), excluding itself and sorted by mileage proximity. Prices are asking prices, not valuations or transaction data.
+Each app builds to its own `dist` and serves frontend/API on one origin. Defaults are search port 3000 and report port 3001. Root `.env` is server-only and loaded explicitly by launchers. Root `.cache` and `.budget` remain private and are not migrated into workspaces. Search receives canonical absolute cache/budget paths before server import; production startup without the root launcher fails closed. The existing £10 ledger is never initialized or reset by startup.
 
-## Future work
-Verify provider licenses, UK payloads and quota/billing hard stops before adding live adapters. Add account-backed watches and scheduled notifications only as a separate change. Never infer sale prices from removed listings.
+## Data flow
+
+Search demo reads fictional fixtures or an explicitly selected permitted local cache. Its separate `/live` API reserves an allowance before each user-requested provider call; no startup, polling, retry or automatic cache-miss calls are introduced.
+
+Buying report: registration → same-origin JSON `POST /api/report-preview` → normalized allowlisted preview → `POST /api/report-generate` → complete normalized report. Mock reads only a known registration from ignored `.local/` files. Live preview makes one vehicle-details call and live generation makes three remaining package calls, without retries. A random preview ID refers to a server-only 30-minute in-memory session; it is bound to the exact mode and registration, coalesces concurrent generation, and is removed after success or expiry. Raw payloads, keys and billing fields never enter public responses. Completed reports are not persisted.
+
+## Verification
+
+Root `check` covers TypeScript, both test suites and both production builds. Separate smoke commands validate built HTML/assets, deep links and APIs on loopback. Report tests cover evidence labels, unperformed checks, cost assumptions, loading/error states and independent configuration. Workspace tests protect persistent paths. No verification command makes provider requests.
+
+See the multi-module spec and implementation plan under `docs/superpowers/` for scope and acceptance criteria.
+## Buying-report supplier path
+
+The buying-report browser calls only CarScope's staged same-origin routes. The Bun
+server validates the sandbox registration rule and normalises Vehicle Data Global
+packages into the shared preview and `BuyingReport` shapes. Provider credentials
+stay in the server environment. Selecting Live alone never spends a call.
+
+Vehicle details is the one-call identity anchor and must succeed. The later VDI,
+valuation and tyre calls run concurrently and may fail independently; the report
+shows remaining evidence and records the missing package under sources and gaps.
+There is no completed-response cache, database or raw-payload storage. `.local/`
+contains private normalized development examples only and remains Git-ignored.
+
+Great Britain digital MOT records generally start in 2005. Older, imported and
+exempt vehicles may have incomplete coverage. Missing records do not establish a
+clear history, and tax/MOT wording is dated from the supplied evidence. Payment,
+email, PDF delivery and report persistence remain outside the current runtime.
+
+For EVs, traction-battery and charging specifications are normalised from
+`VehicleDetailsWithImage.ModelDetails.Powertrain.EvDetails`; no additional provider
+call is needed. The separate `BatteryDetails` package concerns starter batteries.
+The report must never infer present battery health from model capacity, range,
+warranty or charging specifications.

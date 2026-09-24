@@ -14,7 +14,8 @@ export function loadMockReport(registration:string,root=process.env.CARSCOPE_ROO
  const example=exampleForRegistration(registration);
  if(!example)throw new Error('Mock vehicle unavailable. Choose one of the example vehicles.');
  try {
-  const value:unknown=JSON.parse(readFileSync(resolve(root,`.local/${example}-report.json`),'utf8'));
+  const parsed:unknown=JSON.parse(readFileSync(resolve(root,`.local/${example}-report.json`),'utf8'));
+  const value:unknown=parsed&&typeof parsed==='object'&&!('registration' in parsed)?{...parsed,registration:registration.toUpperCase().replace(/\s/g,'')}:parsed;
   if(!isBuyingReport(value))throw new Error('Invalid normalized report');
   return value;
  } catch(error) {
