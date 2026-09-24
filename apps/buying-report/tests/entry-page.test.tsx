@@ -9,6 +9,7 @@ describe('buying report entry page',()=>{
   expect(html).toContain('Older, imported and exempt vehicles may have gaps');
   expect(html).toContain('class="brand-car">CAR');
   expect(html).toContain('class="brand-scope">SCOPE');
+  expect(html).not.toContain('class="brand-symbol"');
  });
  test('starts in mock mode with four optional examples and no sandbox controls',()=>{
   const html=renderToStaticMarkup(<App/>);
