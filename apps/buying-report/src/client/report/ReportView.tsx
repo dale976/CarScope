@@ -1,173 +1,16 @@
-import { HistoryView } from './HistoryView';
-import { VehicleFacts, VehiclePortrait } from './VehicleStory';
-import type { BuyingReport } from '../shared/report';
-import type { ReactNode } from 'react';
-import { dateLabel, reportAnchor } from '../shared/history';
-import { formatDuration, formatMoney, formatRegistration } from '../domain/formatters';
-import { buildTaxDisplay } from '../domain/vehicle-status';
-import { buildBuyerBriefing } from '../domain/buyer-briefing';
-import { buildRecordOverview } from '../domain/record-overview';
-import { BuyerBriefingView } from './report/BuyerBriefing';
-import { RecordOverview } from './report/RecordOverview';
-function EvSection({ ev }: { ev: NonNullable<BuyingReport['ev']> }) {
-  const milesPerKwh = ev.consumptionWhMile ? 1000 / ev.consumptionWhMile : undefined;
-  const warranty =
-    ev.batteryWarrantyMonths || ev.batteryWarrantyMiles
-      ? [
-          ev.batteryWarrantyMonths ? `${ev.batteryWarrantyMonths / 12} years` : null,
-          ev.batteryWarrantyMiles
-            ? `${ev.batteryWarrantyMiles.toLocaleString('en-GB')} miles`
-            : null,
-        ]
-          .filter(Boolean)
-          .join(' / ')
-      : null;
-  return (
-    <section className="report-section ev-section">
-      <p className="eyebrow">Electric vehicle</p>
-      <h2>Battery, range and charging</h2>
-      <div className="ev-metrics">
-        {ev.usableCapacityKwh != null && (
-          <div>
-            <strong>{ev.usableCapacityKwh} kWh usable</strong>
-            <span>
-              {ev.totalCapacityKwh != null
-                ? `${ev.totalCapacityKwh} kWh total capacity`
-                : 'Total capacity unavailable'}
-            </span>
-          </div>
-        )}
-        {ev.consumptionWhMile != null && (
-          <div>
-            <strong>{ev.consumptionWhMile} Wh/mile</strong>
-            <span>{milesPerKwh?.toFixed(2)} miles/kWh · derived from the supplier figure</span>
-          </div>
-        )}
-        {ev.rangeMiles != null && (
-          <div>
-            <strong>{ev.rangeMiles} miles</strong>
-            <span>Supplier zero-emission range figure</span>
-          </div>
-        )}
-        {ev.maxChargeKw != null && (
-          <div>
-            <strong>{ev.maxChargeKw} kW</strong>
-            <span>Maximum charge input</span>
-          </div>
-        )}
-      </div>
-      {ev.ports.length > 0 && (
-        <div className="charge-ports">
-          {ev.ports.map((port) => (
-            <div className="charge-port" key={port.type}>
-              <div>
-                <h3>{port.type}</h3>
-                <p>
-                  {port.maxKw != null ? `Up to ${port.maxKw} kW` : ''}
-                  {port.location ? ` · ${port.location}` : ''}
-                </p>
-              </div>
-              {port.times.length > 0 && (
-                <dl>
-                  {port.times.map((time) => (
-                    <div key={time.powerKw}>
-                      <dt>{time.powerKw} kW</dt>
-                      <dd>{formatDuration(time.minutes)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              <p className="small-note">Supplier average 10–80% charging times.</p>
-            </div>
-          ))}
-        </div>
-      )}
-      <div className="battery-caution">
-        <strong>Battery health not tested</strong>
-        <p>
-          Capacity, range and charging specifications do not measure this vehicle’s present battery
-          degradation or condition.
-        </p>
-        {warranty && (
-          <p>
-            Original model battery warranty: {warranty}. This does not confirm remaining cover;
-            verify the start date, terms and transferability.
-          </p>
-        )}
-        {ev.superchargerCompatible && (
-          <p>
-            Tesla Supercharger compatibility is listed by the supplier. Confirm connector support
-            and any adaptor requirements for this vehicle.
-          </p>
-        )}
-      </div>
-      <p className="small-note">
-        Supplier EV specifications{ev.generatedAt ? ` generated ${ev.generatedAt}` : ''}. Charging
-        times vary with temperature, battery state, charger output and charge curve.
-      </p>
-    </section>
-  );
-}
-function Chapter({
-  number,
-  title,
-  intro,
-  children,
-}: {
-  number: string;
-  title: string;
-  intro: string;
-  children: ReactNode;
-}) {
-  return (
-    <section className="report-chapter" aria-labelledby={`chapter-${number}`}>
-      <header className="chapter-heading">
-        <span>{number}</span>
-        <div>
-          <h2 id={`chapter-${number}`}>{title}</h2>
-          <p>{intro}</p>
-        </div>
-      </header>
-      {children}
-    </section>
-  );
-}
-function FinanceRecordDetails({
-  records,
-}: {
-  records: NonNullable<BuyingReport['financeRecords']>;
-}) {
-  return (
-    <div className="finance-records">
-      {records.map((record, index) => (
-        <dl key={`${record.company ?? 'finance'}-${record.agreementDate ?? index}`}>
-          <div>
-            <dt>Agreement type</dt>
-            <dd>{record.agreementType ?? 'Not supplied'}</dd>
-          </div>
-          <div>
-            <dt>Finance company</dt>
-            <dd>{record.company ?? 'Not supplied'}</dd>
-          </div>
-          <div>
-            <dt>Agreement date</dt>
-            <dd>{record.agreementDate ? dateLabel(record.agreementDate) : 'Not supplied'}</dd>
-          </div>
-          <div>
-            <dt>Term</dt>
-            <dd>{record.termMonths != null ? `${record.termMonths} months` : 'Not supplied'}</dd>
-          </div>
-          {record.contactNumber && (
-            <div>
-              <dt>Lender contact</dt>
-              <dd>{record.contactNumber}</dd>
-            </div>
-          )}
-        </dl>
-      ))}
-    </div>
-  );
-}
+import { HistoryView } from '../HistoryView';
+import { VehicleFacts, VehiclePortrait } from '../VehicleStory';
+import type { BuyingReport } from '../../shared/report';
+import { reportAnchor } from '../../shared/history';
+import { formatMoney, formatRegistration } from '../../domain/formatters';
+import { buildTaxDisplay } from '../../domain/vehicle-status';
+import { buildBuyerBriefing } from '../../domain/buyer-briefing';
+import { buildRecordOverview } from '../../domain/record-overview';
+import { BuyerBriefingView } from './BuyerBriefing';
+import { RecordOverview } from './RecordOverview';
+import { ReportChapter } from './ReportChapter';
+import { EvSection } from './EvSection';
+import { FinanceRecordDetails } from './FinanceRecordDetails';
 export function ReportView({ report }: { report: BuyingReport }) {
   const latestMotMileage = [...(report.evidence?.mot ?? [])]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -235,7 +78,7 @@ export function ReportView({ report }: { report: BuyingReport }) {
       </section>
       <RecordOverview model={buildRecordOverview(report)} />
       <BuyerBriefingView briefing={buildBuyerBriefing(report)} />
-      <Chapter
+      <ReportChapter
         number="01"
         title="Vehicle details"
         intro="The model specifications and practical facts returned for this vehicle."
@@ -284,8 +127,8 @@ export function ReportView({ report }: { report: BuyingReport }) {
               <p className="empty-data">Tyre fitment unavailable in the supplied data.</p>
             </section>
           ))}
-      </Chapter>
-      <Chapter
+      </ReportChapter>
+      <ReportChapter
         number="02"
         title="History and mileage"
         intro="Recorded events and mileage evidence, shown in date order without filling gaps in the record."
@@ -306,8 +149,8 @@ export function ReportView({ report }: { report: BuyingReport }) {
             <p>{report.historyNote}</p>
           </aside>
         )}
-      </Chapter>
-      <Chapter
+      </ReportChapter>
+      <ReportChapter
         number="03"
         title="Value and ownership"
         intro="Supplier valuation benchmarks and identifiable running costs, with estimates clearly identified."
@@ -433,8 +276,8 @@ export function ReportView({ report }: { report: BuyingReport }) {
             )}
           </section>
         </div>
-      </Chapter>
-      <Chapter
+      </ReportChapter>
+      <ReportChapter
         number="04"
         title="Before you buy"
         intro="The checks and questions that remain between this report and a purchase decision."
@@ -492,7 +335,7 @@ export function ReportView({ report }: { report: BuyingReport }) {
             </p>
           </section>
         </div>
-      </Chapter>
+      </ReportChapter>
       {report.evidence && (
         <section className="report-section">
           <h2>Sources, gaps and assumptions</h2>

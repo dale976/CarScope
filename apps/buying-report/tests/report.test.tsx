@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReportView } from '../src/client/ReportView';
+import { ReportView } from '../src/client/report/ReportView';
 import { ReportContent } from '../src/client/ReportContent';
 import { sampleReport } from '../fixtures/sample-report';
 test('sample identifies evidence and never clears unperformed checks', () => {

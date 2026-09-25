@@ -1,5 +1,5 @@
 import type { BuyingReport } from '../shared/report';
-import { ReportView } from './ReportView';
+import { ReportView } from './report/ReportView';
 export type ReportState =
   | { status: 'idle' | 'loading' | 'error' }
   | { status: 'ready'; report: BuyingReport };

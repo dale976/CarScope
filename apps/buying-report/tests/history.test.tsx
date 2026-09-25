@@ -1,7 +1,7 @@
 import { test, expect } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { VehicleStory, buildTimeline } from '../src/client/VehicleStory';
-import { ReportView } from '../src/client/ReportView';
+import { ReportView } from '../src/client/report/ReportView';
 import { sampleReport } from '../fixtures/sample-report';
 const detail = { registered: '2005-01-01', keepers: [] };
 const mot = [
