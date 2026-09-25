@@ -109,3 +109,32 @@ test('an old tax observation is not labelled as current in the complete report',
  expect(html).not.toContain('Current tax status');
  expect(html).not.toContain('<span>Current status</span>');
 });
+
+test('buyer briefing prioritises a returned finance record and links to its evidence',()=>{
+ const report={...sampleReport,kind:'sandbox-example' as const,financeRecords:[{agreementDate:'2026-06-01',agreementType:'Hire purchase',company:'JBR Capital'}],checks:[{name:'Finance' as const,status:'record-returned' as const},{name:'Stolen status' as const,status:'none-returned' as const},{name:'Insurance write-off' as const,status:'none-returned' as const}],sellerQuestions:['Can you confirm the recorded finance has been settled, or explain how settlement will be completed?','Can I see the complete service history?']};
+ const html=renderToStaticMarkup(<ReportView report={report}/>);
+ const briefing=html.slice(html.indexOf('Your buyer briefing'),html.indexOf('Vehicle details'));
+ for(const text of ['What the records indicate','One item to resolve','Outstanding finance recorded','Before you view the car','What the records cannot confirm'])expect(briefing).toContain(text);
+ expect(briefing).toContain('href="#history-check-finance"');
+ expect(briefing).toContain('evidence that the agreement will be settled');
+ expect(briefing).not.toContain('Can you confirm the recorded finance has been settled');
+ expect(briefing).not.toContain('safe to buy');
+});
+
+test('buyer briefing explains sparse older history without treating missing data as clear',()=>{
+ const report={...sampleReport,kind:'sandbox-example' as const,vehicle:{...sampleReport.vehicle,year:1982,mileage:33830},detail:{registered:'2022-08-01',keepers:[{date:'2024-07-26',previous:2},{date:'2023-09-22',previous:1}]},historyEvents:[],checks:[{name:'Finance' as const,status:'none-returned' as const},{name:'Stolen status' as const,status:'none-returned' as const},{name:'Insurance write-off' as const,status:'none-returned' as const}],evidence:{mot:[{date:'2024-02-20',mileage:null,expiry:'2025-02-19',result:'pass' as const,annotations:[]},{date:'2023-06-06',mileage:33830,expiry:'2024-06-23',result:'pass' as const,annotations:[]}],tyres:[],notes:[]}};
+ const html=renderToStaticMarkup(<ReportView report={report}/>);
+ const briefing=html.slice(html.indexOf('Your buyer briefing'),html.indexOf('Vehicle details'));
+ expect(briefing).toContain('The available history is incomplete');
+ expect(briefing).toContain('mileage was supplied for only 1 of 2 MOT records');
+ expect(briefing).toContain('Request older MOT certificates and service invoices');
+ expect(briefing).not.toContain('history is clear');
+});
+
+test('buyer briefing gives relevant EV questions and states that battery health is unknown',()=>{
+ const report={...sampleReport,kind:'sandbox-example' as const,ev:{rangeMiles:237,maxChargeKw:142,healthStatus:'not-tested' as const,ports:[]}};
+ const html=renderToStaticMarkup(<ReportView report={report}/>);
+ const briefing=html.slice(html.indexOf('Your buyer briefing'),html.indexOf('Vehicle details'));
+ expect(briefing).toContain('Battery health is not measured by these records');
+ expect(briefing).toContain('Ask for a current battery-health assessment');
+});

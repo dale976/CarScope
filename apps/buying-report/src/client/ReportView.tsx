@@ -45,6 +45,47 @@ function RecordOverview({report}:{report:BuyingReport}){
   {report.findings.length>0&&<div className="overview-findings"><h3>Points to examine</h3>{report.findings.map(f=><article key={f.label}><span className="source-label">{f.source==='seller-claim'?'Seller claim':f.source==='estimate'?'Illustrative estimate / supplier benchmark':'Supplied record'}</span><h4>{f.label}</h4><p>{f.text}</p></article>)}</div>}
  </section>;
 }
+function BuyerBriefing({report}:{report:BuyingReport}){
+ const mot=report.evidence?.mot??[];
+ const motWithMileage=mot.filter(record=>record.mileage!==null).length;
+ const financeReturned=report.checks.some(check=>check.name==='Finance'&&check.status==='record-returned');
+ const significant=(report.historyEvents??[]).filter(event=>event.significant);
+ const incomplete=report.checks.filter(check=>check.status==='not-checked');
+ const sparseOlderHistory=report.vehicle.year<2000&&(mot.length===0||motWithMileage<mot.length);
+ const firstAttention=financeReturned
+  ? {title:'Outstanding finance recorded',text:'A finance agreement appears in the supplied records. Ask for evidence that the agreement will be settled before ownership transfers.',href:'#history-check-finance'}
+  : significant[0]
+   ? {title:significant[0].title,text:'A significant dated event appears in the supplied history and should be checked against current documents.',href:`#history-event-${reportAnchor(significant[0].title)}`}
+   : null;
+ const summary=sparseOlderHistory
+  ? <>The available history is incomplete. This older vehicle has {mot.length} supplied MOT {mot.length===1?'record':'records'} and mileage was supplied for only {motWithMileage} of {mot.length} MOT records. Earlier paper records may exist outside the returned data.</>
+  : firstAttention
+   ? <>The supplied records identify an item that should be resolved before purchase. The detailed evidence remains available in the report below.</>
+   : mot.length===0
+    ? <>The returned history is limited. This can be expected for a newer vehicle, but missing records must not be treated as confirmation that no event occurred.</>
+    : <>The returned identity, status and history records provide a useful starting point for a viewing. Confirm them against the vehicle and its current documents.</>;
+ const questions:string[]=[];
+ if(financeReturned)questions.push('Confirm when the recorded finance will be settled and request written evidence.');
+ if(sparseOlderHistory)questions.push('Request older MOT certificates and service invoices.');
+ if(report.ev)questions.push('Ask for a current battery-health assessment and evidence of the remaining battery warranty.');
+ if(mot.some(record=>(record.annotations?.length??0)>0))questions.push('Ask whether the recorded MOT findings were repaired and request supporting invoices.');
+ for(const question of report.sellerQuestions){
+  const duplicatesFinance=financeReturned&&/finance|settle/i.test(question);
+  if(questions.length<4&&!duplicatesFinance&&!questions.includes(question))questions.push(question);
+ }
+ const unknown=report.ev
+  ? 'Battery health is not measured by these records. Present mechanical, cosmetic and battery condition still require inspection.'
+  : incomplete.length
+   ? `${incomplete.map(check=>check.name).join(', ')} ${incomplete.length===1?'was':'were'} not checked. The report also cannot establish the vehicle’s present mechanical or cosmetic condition.`
+   : 'The supplied records cannot establish the vehicle’s present mechanical or cosmetic condition, or confirm a complete maintenance history.';
+ return <section className="buyer-briefing" aria-labelledby="buyer-briefing-title">
+  <header className="briefing-heading"><div><p className="eyebrow">Plain-English evidence summary</p><h2 id="buyer-briefing-title">Your buyer briefing</h2></div><span>Generated from this report’s returned records</span></header>
+  <div className="briefing-summary"><h3>What the records indicate</h3><p>{summary}</p></div>
+  {firstAttention&&<a className="briefing-attention" href={firstAttention.href}><span><small>One item to resolve</small><strong>{firstAttention.title}</strong><p>{firstAttention.text}</p></span><b>View evidence ↓</b></a>}
+  <div className="briefing-grid"><div><h3>Before you view the car</h3><ul>{questions.slice(0,4).map(question=><li key={question}>{question}</li>)}</ul></div><div className="briefing-limit"><h3>What the records cannot confirm</h3><p>{unknown}</p></div></div>
+  <p className="briefing-note">This briefing explains supplied records. It is not a vehicle rating, condition assessment or buying recommendation.</p>
+ </section>;
+}
 export function ReportView({report}:{report:BuyingReport}) {
  const latestMotMileage=[...(report.evidence?.mot??[])].sort((a,b)=>b.date.localeCompare(a.date)).find(item=>item.mileage!==null)?.mileage;
  const mileageSource=latestMotMileage===report.vehicle.mileage?'Latest supplied MOT reading':'Supplied report mileage';
@@ -55,6 +96,7 @@ export function ReportView({report}:{report:BuyingReport}) {
   {report.detail?.image&&<VehiclePortrait detail={report.detail} name={report.vehicle.name}/>}
   <section className="vehicle-bar" aria-label="Vehicle identified"><div><p className="eyebrow">Vehicle identified</p><div className="vehicle-bar-title"><h2>{report.vehicle.name}</h2></div><p>{report.vehicle.year} <span aria-hidden="true">/</span> {report.vehicle.mileage===null?'Mileage unavailable':<>{report.vehicle.mileage.toLocaleString('en-GB')} miles <span aria-hidden="true">/</span> {mileageSource}</>}</p></div>{report.registration&&<div className="vehicle-registration"><span>Registration</span><strong>{registrationLabel(report.registration)}</strong></div>}</section>
   <RecordOverview report={report}/>
+  <BuyerBriefing report={report}/>
   <Chapter number="01" title="Vehicle details" intro="The model specifications and practical facts returned for this vehicle.">
    {report.detail&&<VehicleFacts detail={report.detail}/>}
    {report.ev&&<EvSection ev={report.ev}/>}
