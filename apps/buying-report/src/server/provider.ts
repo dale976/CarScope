@@ -1,13 +1,11 @@
 import type { BuyingReport, MotRecord } from '../shared/report';
 import { projectReportPreview, type VehiclePreview } from '../shared/preview';
+import { requestPackage } from './provider/client';
+import { COMPLETION_PACKAGE_NAMES, type Fetcher, type PackageName } from './provider/types';
 
-const ENDPOINT = 'https://uk.api.vehicledataglobal.com/r2/lookup';
-const PACKAGES = ['CarScopeFree', 'VDICheck', 'ValuationDetails', 'TyreDetails'] as const;
-const COMPLETION_PACKAGES = ['VDICheck', 'ValuationDetails', 'TyreDetails'] as const;
-type PackageName = (typeof PACKAGES)[number];
 type Json = Record<string, any>;
 export type ProviderVehicleDetails = Json;
-export type Fetcher = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
+export type { Fetcher } from './provider/types';
 
 export function validateSandboxRegistration(value: string) {
   const registration = value.toUpperCase().replace(/\s/g, '');
@@ -17,31 +15,6 @@ export function validateSandboxRegistration(value: string) {
       'The development service can only search registrations containing the letter A.',
     );
   return registration;
-}
-
-function responseSucceeded(value: Json) {
-  const info = value.ResponseInformation;
-  return info?.IsSuccessStatusCode !== false && value.Results;
-}
-
-async function requestPackage(
-  packageName: PackageName,
-  registration: string,
-  apiKey: string,
-  fetcher: Fetcher,
-) {
-  const url = new URL(ENDPOINT);
-  url.searchParams.set('packagename', packageName);
-  url.searchParams.set('apikey', apiKey);
-  url.searchParams.set('vrm', registration);
-  const response = await fetcher(url, {
-    headers: { Accept: 'application/json' },
-    signal: AbortSignal.timeout(20_000),
-  });
-  if (!response.ok) throw new Error(`${packageName} returned HTTP ${response.status}`);
-  const body = (await response.json()) as Json;
-  if (!responseSucceeded(body)) throw new Error(`${packageName} returned no usable results`);
-  return body.Results as Json;
 }
 
 const day = (value: unknown) =>
@@ -479,7 +452,12 @@ export async function lookupSandboxPreview(
   const fetcher = options.fetcher ?? fetch;
   let previewData: Json;
   try {
-    previewData = await requestPackage('CarScopeFree', registration, options.apiKey, fetcher);
+    previewData = (await requestPackage(
+      'CarScopeFree',
+      registration,
+      options.apiKey,
+      fetcher,
+    )) as Json;
   } catch {
     throw new Error(
       'The development service could not identify the vehicle because vehicle details were unavailable.',
@@ -499,12 +477,14 @@ export async function completeSandboxReport(
   const registration = validateSandboxRegistration(registrationInput);
   const fetcher = options.fetcher ?? fetch;
   const settled = await Promise.allSettled(
-    COMPLETION_PACKAGES.map((name) => requestPackage(name, registration, options.apiKey, fetcher)),
+    COMPLETION_PACKAGE_NAMES.map((name) =>
+      requestPackage(name, registration, options.apiKey, fetcher),
+    ),
   );
   const results = new Map<PackageName, Json>();
   const missing: string[] = [];
   settled.forEach((result, index) => {
-    const packageName = COMPLETION_PACKAGES[index];
+    const packageName = COMPLETION_PACKAGE_NAMES[index];
     if (!packageName) return;
     if (result.status === 'fulfilled') results.set(packageName, result.value);
     else missing.push(`${packageName} unavailable for this report.`);
