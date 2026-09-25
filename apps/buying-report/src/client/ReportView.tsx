@@ -3,9 +3,12 @@ import { VehicleFacts, VehiclePortrait } from './VehicleStory';
 import type { BuyingReport } from '../shared/report';
 import type { ReactNode } from 'react';
 import { dateLabel, reportAnchor } from '../shared/history';
-import { resolvedMotStatus } from '../shared/preview';
 import { formatDuration, formatMoney, formatRegistration } from '../domain/formatters';
-import { buildMotDisplay, buildTaxDisplay } from '../domain/vehicle-status';
+import { buildTaxDisplay } from '../domain/vehicle-status';
+import { buildBuyerBriefing } from '../domain/buyer-briefing';
+import { buildRecordOverview } from '../domain/record-overview';
+import { BuyerBriefingView } from './report/BuyerBriefing';
+import { RecordOverview } from './report/RecordOverview';
 function EvSection({ ev }: { ev: NonNullable<BuyingReport['ev']> }) {
   const milesPerKwh = ev.consumptionWhMile ? 1000 / ev.consumptionWhMile : undefined;
   const warranty =
@@ -165,257 +168,6 @@ function FinanceRecordDetails({
     </div>
   );
 }
-function RecordOverview({ report }: { report: BuyingReport }) {
-  const finance = report.financeRecords?.[0];
-  const significant = report.historyEvents?.filter((event) => event.significant).length ?? 0;
-  const returned = report.checks.filter((check) => check.status === 'record-returned').length;
-  const incomplete = report.checks.filter((check) => check.status === 'not-checked').length;
-  const motRecords = report.evidence?.mot.length ?? 0;
-  const keeperRecords = report.detail?.keepers.length ?? 0;
-  const suppliedRecords =
-    motRecords +
-    keeperRecords +
-    (report.historyEvents?.length ?? 0) +
-    (report.financeRecords?.length ?? 0);
-  const returnedLabel = `${returned} check${returned === 1 ? '' : 's'} returned ${returned === 1 ? 'a record' : 'records'}`;
-  const attention = [
-    ...(report.historyEvents ?? [])
-      .filter((event) => event.significant)
-      .map((event) => ({
-        label: event.title,
-        detail: 'A significant dated event appears in the supplied history.',
-        href: `#history-event-${reportAnchor(event.title)}`,
-      })),
-    ...report.checks
-      .filter((check) => check.status === 'record-returned')
-      .map((check) => ({
-        label:
-          check.name === 'Finance' ? 'Finance record returned' : `${check.name} · Record returned`,
-        detail:
-          check.name === 'Finance'
-            ? [finance?.agreementType, finance?.company].filter(Boolean).join(' · ') ||
-              'Confirm its current status and obtain evidence of settlement before purchase.'
-            : 'Review the returned record and verify its current status before purchase.',
-        href: `#history-check-${reportAnchor(check.name)}`,
-      })),
-  ];
-  const motStatus = resolvedMotStatus(report);
-  const motDisplay = buildMotDisplay(motStatus);
-  const taxDisplay = buildTaxDisplay(report.tax);
-  return (
-    <section className="record-overview" aria-labelledby="record-overview-title">
-      <div className="overview-heading">
-        <div>
-          <p className="eyebrow">At a glance</p>
-          <h2 id="record-overview-title">Record overview</h2>
-        </div>
-        <p>
-          This is not a vehicle rating or buying recommendation. It summarises the records returned
-          and the checks still outstanding.
-        </p>
-      </div>
-      <div className="current-status-grid">
-        <div data-state={motDisplay.tone}>
-          <span>MOT status</span>
-          <strong>{motDisplay.label}</strong>
-          <small>{motDisplay.detail}</small>
-        </div>
-        <div data-state={taxDisplay.tone}>
-          <span>Tax status</span>
-          <strong>{taxDisplay.label}</strong>
-          <small>{taxDisplay.detail}</small>
-        </div>
-      </div>
-      <div className="overview-stats">
-        <div
-          role="group"
-          data-tone="neutral"
-          aria-label={`${suppliedRecords} ${suppliedRecords === 1 ? 'record supplied' : 'records supplied'}`}
-        >
-          <strong>{suppliedRecords}</strong>
-          <span>{suppliedRecords === 1 ? 'record supplied' : 'records supplied'}</span>
-        </div>
-        <div role="group" data-tone={returned ? 'attention' : 'neutral'} aria-label={returnedLabel}>
-          <strong>{returned}</strong>
-          <span>{returnedLabel.replace(/^\d+ /, '')}</span>
-        </div>
-        <div
-          role="group"
-          data-tone={incomplete ? 'pending' : 'neutral'}
-          aria-label={`${incomplete} ${incomplete === 1 ? 'check not completed' : 'checks not completed'}`}
-        >
-          <strong>{incomplete}</strong>
-          <span>{incomplete === 1 ? 'check not completed' : 'checks not completed'}</span>
-        </div>
-      </div>
-      {attention.length > 0 && (
-        <div className="overview-records">
-          <h3>Records requiring attention</h3>
-          <ul>
-            {attention.map((item) => (
-              <li key={item.href}>
-                <a href={item.href}>
-                  <strong>{item.label}</strong>
-                  <span>{item.detail}</span>
-                  <small>View record ↓</small>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      <div className="overview-guidance">
-        <div>
-          <h3>Why this matters</h3>
-          <p>
-            {significant || returned
-              ? 'The supplied records contain items that deserve a closer look before relying on the vehicle’s history.'
-              : 'No headline event was identified in the supplied records, but that is not the same as a current all-clear.'}
-          </p>
-        </div>
-        <div>
-          <h3>What to do next</h3>
-          <p>
-            {incomplete
-              ? 'Complete the outstanding checks and verify any returned records with current documents or an independent inspection.'
-              : 'Verify the returned information against current documents and the vehicle itself before purchase.'}
-          </p>
-        </div>
-      </div>
-      {report.findings.length > 0 && (
-        <div className="overview-findings">
-          <h3>Points to examine</h3>
-          {report.findings.map((f) => (
-            <article key={f.label}>
-              <span className="source-label">
-                {f.source === 'seller-claim'
-                  ? 'Seller claim'
-                  : f.source === 'estimate'
-                    ? 'Illustrative estimate / supplier benchmark'
-                    : 'Supplied record'}
-              </span>
-              <h4>{f.label}</h4>
-              <p>{f.text}</p>
-            </article>
-          ))}
-        </div>
-      )}
-    </section>
-  );
-}
-function BuyerBriefing({ report }: { report: BuyingReport }) {
-  const mot = report.evidence?.mot ?? [];
-  const motWithMileage = mot.filter((record) => record.mileage !== null).length;
-  const financeReturned = report.checks.some(
-    (check) => check.name === 'Finance' && check.status === 'record-returned',
-  );
-  const significant = (report.historyEvents ?? []).filter((event) => event.significant);
-  const incomplete = report.checks.filter((check) => check.status === 'not-checked');
-  const sparseOlderHistory =
-    report.vehicle.year < 2000 && (mot.length === 0 || motWithMileage < mot.length);
-  const firstAttention = financeReturned
-    ? {
-        title: 'Outstanding finance recorded',
-        text: 'A finance agreement appears in the supplied records. Ask for evidence that the agreement will be settled before ownership transfers.',
-        href: '#history-check-finance',
-      }
-    : significant[0]
-      ? {
-          title: significant[0].title,
-          text: 'A significant dated event appears in the supplied history and should be checked against current documents.',
-          href: `#history-event-${reportAnchor(significant[0].title)}`,
-        }
-      : null;
-  const summary = sparseOlderHistory ? (
-    <>
-      The available history is incomplete. This older vehicle has {mot.length} supplied MOT{' '}
-      {mot.length === 1 ? 'record' : 'records'} and mileage was supplied for only {motWithMileage}{' '}
-      of {mot.length} MOT records. Earlier paper records may exist outside the returned data.
-    </>
-  ) : firstAttention ? (
-    <>
-      The supplied records identify an item that should be resolved before purchase. The detailed
-      evidence remains available in the report below.
-    </>
-  ) : mot.length === 0 ? (
-    <>
-      The returned history is limited. This can be expected for a newer vehicle, but missing records
-      must not be treated as confirmation that no event occurred.
-    </>
-  ) : (
-    <>
-      The returned identity, status and history records provide a useful starting point for a
-      viewing. Confirm them against the vehicle and its current documents.
-    </>
-  );
-  const questions: string[] = [];
-  if (financeReturned)
-    questions.push(
-      'Confirm when the recorded finance will be settled and request written evidence.',
-    );
-  if (sparseOlderHistory) questions.push('Request older MOT certificates and service invoices.');
-  if (report.ev)
-    questions.push(
-      'Ask for a current battery-health assessment and evidence of the remaining battery warranty.',
-    );
-  if (mot.some((record) => (record.annotations?.length ?? 0) > 0))
-    questions.push(
-      'Ask whether the recorded MOT findings were repaired and request supporting invoices.',
-    );
-  for (const question of report.sellerQuestions) {
-    const duplicatesFinance = financeReturned && /finance|settle/i.test(question);
-    if (questions.length < 4 && !duplicatesFinance && !questions.includes(question))
-      questions.push(question);
-  }
-  const unknown = report.ev
-    ? 'Battery health is not measured by these records. Present mechanical, cosmetic and battery condition still require inspection.'
-    : incomplete.length
-      ? `${incomplete.map((check) => check.name).join(', ')} ${incomplete.length === 1 ? 'was' : 'were'} not checked. The report also cannot establish the vehicle’s present mechanical or cosmetic condition.`
-      : 'The supplied records cannot establish the vehicle’s present mechanical or cosmetic condition, or confirm a complete maintenance history.';
-  return (
-    <section className="buyer-briefing" aria-labelledby="buyer-briefing-title">
-      <header className="briefing-heading">
-        <div>
-          <p className="eyebrow">Plain-English evidence summary</p>
-          <h2 id="buyer-briefing-title">Your buyer briefing</h2>
-        </div>
-        <span>Generated from this report’s returned records</span>
-      </header>
-      <div className="briefing-summary">
-        <h3>What the records indicate</h3>
-        <p>{summary}</p>
-      </div>
-      {firstAttention && (
-        <a className="briefing-attention" href={firstAttention.href}>
-          <span>
-            <small>One item to resolve</small>
-            <strong>{firstAttention.title}</strong>
-            <p>{firstAttention.text}</p>
-          </span>
-          <b>View evidence ↓</b>
-        </a>
-      )}
-      <div className="briefing-grid">
-        <div>
-          <h3>Before you view the car</h3>
-          <ul>
-            {questions.slice(0, 4).map((question) => (
-              <li key={question}>{question}</li>
-            ))}
-          </ul>
-        </div>
-        <div className="briefing-limit">
-          <h3>What the records cannot confirm</h3>
-          <p>{unknown}</p>
-        </div>
-      </div>
-      <p className="briefing-note">
-        This briefing explains supplied records. It is not a vehicle rating, condition assessment or
-        buying recommendation.
-      </p>
-    </section>
-  );
-}
 export function ReportView({ report }: { report: BuyingReport }) {
   const latestMotMileage = [...(report.evidence?.mot ?? [])]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -481,8 +233,8 @@ export function ReportView({ report }: { report: BuyingReport }) {
           </div>
         )}
       </section>
-      <RecordOverview report={report} />
-      <BuyerBriefing report={report} />
+      <RecordOverview model={buildRecordOverview(report)} />
+      <BuyerBriefingView briefing={buildBuyerBriefing(report)} />
       <Chapter
         number="01"
         title="Vehicle details"
