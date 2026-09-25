@@ -6,6 +6,7 @@ dist/
 .cache/
 .DS_Store
 .tools/
+.worktrees/
 
 # Persistent local spend accounting (not provider data)
 .budget/
