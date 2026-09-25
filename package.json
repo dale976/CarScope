@@ -14,7 +14,10 @@
     "build": "sh scripts/bun.sh scripts/workspace.ts build",
     "test": "sh scripts/bun.sh test tests apps/search/tests apps/buying-report/tests",
     "typecheck": "sh scripts/bun.sh --bun tsc --noEmit",
-    "check": "sh scripts/bun.sh run typecheck && sh scripts/bun.sh run test && sh scripts/bun.sh run build",
+    "format": "sh scripts/bun.sh x biome format --write apps/buying-report",
+    "format:check": "sh scripts/bun.sh x biome format apps/buying-report",
+    "lint": "sh scripts/bun.sh x biome lint apps/buying-report",
+    "check": "sh scripts/bun.sh run format:check && sh scripts/bun.sh run lint && sh scripts/bun.sh run typecheck && sh scripts/bun.sh run test && sh scripts/bun.sh run build",
     "smoke": "sh scripts/bun.sh apps/search/scripts/smoke.ts",
     "smoke:report": "sh scripts/bun.sh apps/buying-report/scripts/smoke.ts",
     "cache:import": "sh scripts/bun.sh apps/search/scripts/import-cache.ts",
@@ -25,6 +28,7 @@
     "react-dom": "^19.1.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "2.5.14",
     "@types/bun": "^1.2.17",
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
