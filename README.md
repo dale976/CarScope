@@ -1,277 +1,149 @@
 # CarScope
 
-A local Bun workspace containing two React + TypeScript products: enthusiast search and a consumer buying-report prototype. Demo search and the report work offline; the existing live search preview requires explicit paid-request actions.
+CarScope is a UK vehicle research prototype built with Bun, React and TypeScript. It currently contains two related products:
 
+- **Buying Report** — identify a vehicle by registration, show a useful free preview, then generate a structured buyer's report covering provenance, MOT history, valuation, tax, tyres, specifications and ownership costs where data is available.
+- **Enthusiast Search** — explore prestige and enthusiast cars with detailed filters, saved-search and watchlist prototypes, comparisons and specification evidence.
 
-## Two apps, one repository
+The project defaults to local mock data. Development and automated tests do not require supplier calls, credentials or paid services.
 
-```text
-apps/search/          Existing enthusiast search: UI, API, fixtures, tests
-apps/buying-report/   Offline consumer buying brief: UI, API, fictional sample, tests
-packages/ui/          Shared CarScope brand mark
-scripts/              Root launchers and local Bun fallback
-```
+## Quick start
 
-Run these from the repository root; npm launches Bun rather than replacing it:
-
-| Command | Result |
-| --- | --- |
-| `npm run dev` | Search, default http://127.0.0.1:3000 |
-| `npm run dev:report` | Buying report, default http://127.0.0.1:9000 |
-| `npm run build` | Production builds for both apps |
-| `npm run start` | Built search app |
-| `npm run start:report` | Built buying-report app |
-| `npm run check` | Typecheck, all tests, both builds |
-| `npm run smoke` / `npm run smoke:report` | Local-only production checks |
-
-The equivalent `bun run …` commands work too. App folders also expose dev/start/build/test/typecheck scripts. The root `.env`, `.tools`, `.cache` and `.budget` stay in place; root launchers supply absolute cache and ledger locations even when launched from an app folder. Never reset the budget by moving or copying it. Production servers must be started through the launchers, not by manually executing a bundled file.
-
-### Buying-report prototype
-
-Run `npm run dev:report` and open http://127.0.0.1:9000. The journey starts in **Mock** on every reload: enter a registration, review the free vehicle preview, then open the complete report. Four private local examples are available: Porsche `DF74 FPA`, Lotus `YJ22 ACU`, Fiat `SL60 AUC` and Tesla `LD17 VAE`.
-
-Mock reads normalized reports from the ignored `.local/` directory and has no supplier-network branch. Keep these files private: they can contain licensed or personal vehicle observations and must never be committed. A missing example fails clearly rather than calling a provider.
-
-**Live** is an explicit development option. Merely selecting it makes no request. “Identify vehicle” makes one `CarScopeFree` call for vehicle identity, image, MOT and tax data; “View complete report” makes three calls for VDI, valuation and tyres, with no retries. Raw provider responses, credentials and billing data stay server-side. The server holds the preview response for up to 30 minutes behind a random preview ID, then discards it after successful generation or expiry. Completed reports are not persisted.
-
-Great Britain digital MOT history generally begins in 2005. Older, imported and exempt vehicles may return partial or no MOT evidence. Missing evidence is shown as not returned and never treated as a clear history. Status wording uses supplied dates and does not describe an old observation as current.
-
-Payment, email delivery, PDF export, customer accounts and completed-report persistence are deliberately deferred. The £9.99 action currently opens the development report directly and does not claim a payment occurred.
-
-## Start on this Mac
-
-The delivered Desktop folder includes dependencies and a local Bun binary in `.tools/` (Mac Apple Silicon), so no global install is needed:
+Install [Bun](https://bun.sh/docs/installation) 1.2.17 or newer, then run:
 
 ```sh
-cd ~/Desktop/CarScope
-./dev
-```
-
-Open http://127.0.0.1:3000. Stop with Ctrl+C. To use a different port: `PORT=4317 ./dev`.
-
-For all other commands, make the included Bun available to the current terminal session:
-
-```sh
-export PATH="$PWD/.tools:$PATH"
-bun run check
-```
-
-`.tools/` and `node_modules/` are ignored by Git. The local runtime is just a convenience for this Mac; it is not part of the portable source.
-
-## Fresh checkout / another machine
-
-Install [Bun](https://bun.com/docs/installation), version 1.2.17 or newer (tested with 1.4.2). Node.js is not required to run, bundle, type-check or test CarScope.
-
-```sh
+git clone https://github.com/dale976/CarScope.git
+cd CarScope
 bun install --frozen-lockfile
+bun run dev:report
+```
+
+Open [http://127.0.0.1:9000](http://127.0.0.1:9000) for the buying-report journey.
+
+To run the enthusiast-search app instead:
+
+```sh
 bun run dev
 ```
 
-Dependency installation uses the public package registry and downloads free packages. Once dependencies are installed, development and tests work offline. The offline demos require no remote fonts, analytics, AI calls or car-data requests. Explicit live search actions use MarketCheck and may display dealer-hosted images.
+Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
+
+The `npm run ...` equivalents also work when Bun is installed because the package scripts invoke Bun internally.
+
+## Commands
+
+| Command | Purpose |
+| --- | --- |
+| `bun run dev:report` | Run the buying-report app on port 9000 |
+| `bun run dev` | Run the enthusiast-search app on port 3000 |
+| `bun run check` | Run formatting, linting, type checks, tests and production builds |
+| `bun run test` | Run all Bun tests |
+| `bun run build` | Build both apps |
+| `bun run start:report` | Serve the built buying-report app |
+| `bun run start` | Serve the built search app |
+| `bun run smoke:report` | Smoke-test the built buying-report app locally |
+| `bun run smoke` | Smoke-test the built search app locally |
+
+Use `REPORT_PORT` or `PORT` to choose different local ports.
+
+## Buying-report flow
+
+The report app starts in **Mock** mode on every reload:
+
+1. Enter a registration.
+2. Review the free vehicle preview, including identity, MOT and tax status when returned.
+3. Open the complete report.
+4. Review the buyer briefing, records needing attention, history, valuation, running-cost context and detailed vehicle data.
+
+Mock reports are read from ignored `.local/*-report.json` files. They are deliberately kept out of Git because supplier-derived examples may contain licensed or vehicle-specific data. If a mock registration is unavailable, the app returns a clear error and never falls back to a live supplier call.
+
+The report is factual and evidence-led. Missing records remain visibly unavailable; absence of returned data is not presented as a clear history. Great Britain digital MOT history generally begins in 2005, so older, imported and exempt vehicles may have incomplete records.
+
+Payment, email delivery, PDF export, accounts and permanent report storage are not implemented yet. The current purchase action opens the development report and does not claim that payment has occurred.
+
+## Optional Vehicle Data Global sandbox
+
+Copy the example environment file and add your own sandbox key:
 
 ```sh
-bun test                  # API, filtering, cache validation and cost-guard tests
-bun run typecheck         # TypeScript, executed using Bun
-bun run build             # Bundle React/CSS and the Bun backend into each app’s dist/
-bun run start             # Run the built app locally
-bun run check             # Typecheck, tests, production build
-bun run smoke             # Local HTTP smoke check of built app
+cp .env.example .env
 ```
 
-## What works
+```dotenv
+VDG_SANDBOX_ENABLED=true
+VDG_API_KEY=your_server_side_key
+```
 
-- Search make/model/trim/features; combine make, price, mileage and must-have filters.
-- Sort by price, mileage, newest listing or longest listed.
-- Detail URLs that survive reloads, with asking price, mileage, days on market, specification, dated price history and same-model comparables.
-- Watch/unwatch cars and save/open/delete searches in browser localStorage.
-- Responsive layout, keyboard-accessible controls, loading, empty and error states.
+Live report generation is an explicit development option in the UI. The current integration uses:
 
-Start with `Lotus Exige 410`, a £70,000 maximum, 30,000 miles and air conditioning. Two sample listings match.
+- `CarScopeFree` for vehicle identity, image, MOT and tax preview data
+- `VDICheck` for provenance and history evidence
+- `ValuationDetails` for valuation figures
+- `TyreDetails` for vehicle-specific fitments
 
-Watchlists and searches are specific to the browser and origin (including port). Alert delivery is an explicitly labelled **UI stub**: no scheduler, polling, email or notifications. There are no accounts or real vehicle offers. Images are original generic car illustrations, not actual listing photos.
+The free preview makes one supplier request. Opening the full report makes the three full-report requests concurrently, without retries. Completed reports and raw provider responses are not archived.
 
-## Zero-cost policy and environment
+Sandbox restrictions apply: registrations must contain the letter **A**, data may be up to 12 months old, and results must not be used in production or for profit. Keep API keys in `.env`; they are read only by the Bun server and are never exposed to React.
 
-No `.env` file or keys are needed. To customize local settings, copy `.env.example` to `.env`. Bun loads it automatically from the project root.
+## Environment variables
 
-| Variable | Default | Behavior |
+The repository works without an `.env` file.
+
+| Variable | Default | Purpose |
 | --- | --- | --- |
-| `DATA_MODE` | `mock` | `mock` reads committed fixtures; `cache` reads only a local snapshot. Every other value, including `live`, stops startup. |
-| `HOST` | `127.0.0.1` | Local-only by default. |
-| `PORT` | `3000` | Search port, valid integer 1–65535. |
-| `REPORT_PORT` | `9000` | Independent buying-report port, valid integer 1–65535. |
-| `CAR_CACHE_PATH` | `.cache/cars.json` | Local normalized snapshot path, relative to project root unless absolute. |
-| `MARKETCHECK_API_KEY` | empty | Server-only key for explicit live search/detail requests and the manual count command. |
-| `DVLA_API_KEY` | empty | Reserved server-only placeholder. |
-| `DVSA_CLIENT_ID`, `DVSA_CLIENT_SECRET`, `DVSA_API_KEY`, `DVSA_TOKEN_URL`, `DVSA_SCOPE` | empty | Reserved server-only OAuth/API configuration placeholders. |
+| `HOST` | `127.0.0.1` | Local bind address |
+| `PORT` | `3000` | Search app port |
+| `REPORT_PORT` | `9000` | Buying-report app port |
+| `DATA_MODE` | `mock` | Search data source: `mock` or local `cache` |
+| `CAR_CACHE_PATH` | `.cache/cars.json` | Private normalized search snapshot |
+| `VDG_SANDBOX_ENABLED` | `false` | Enables the report app's explicit live sandbox path |
+| `VDG_API_KEY` | empty | Server-only Vehicle Data Global sandbox key |
+| `MARKETCHECK_LIVE_ENABLED` | `false` | Enables deliberately triggered MarketCheck development requests |
+| `MARKETCHECK_API_KEY` | empty | Server-only MarketCheck key |
 
-**Demo browsing and buying reports make no provider calls.** Search also retains its separately controlled `/live` preview, described below. Adding a key or opening the preview does not submit a paid request. Cache misses never fall back to a provider. The local spending guard estimates usage; it cannot establish the account’s remaining free quota.
+Additional DVLA and DVSA variables in `.env.example` are reserved placeholders and are not wired into the current product.
 
-Keys belong only in an ignored server `.env`; never add `PUBLIC_`/`VITE_` key variables or embed them in fixtures. `.env*`, caches, dependencies and build output are ignored by Git. The API emits only explicitly allowed data fields, never environment settings or arbitrary imported properties.
+Never commit `.env`, `.local`, `.cache`, `.budget`, provider responses or API keys.
 
-## Local cache workflow
-
-This V1 imports **existing normalized JSON snapshots**, not raw MarketCheck/DVLA/DVSA payloads. There is no endpoint that downloads data. Most work should continue using fixtures.
-
-Try the complete offline flow:
-
-```sh
-bun run cache:import apps/search/fixtures/cars.json
-DATA_MODE=cache bun run dev
-```
-
-The importer validates before writing, drops unknown properties, writes a private temporary file, then atomically replaces the cache. It preserves the source label: importing fictional fixtures still displays “fictional demo data”. Missing/invalid cache returns HTTP 503 with a visible UI error; it does not call an API or quietly substitute fixtures. Cache values remain frozen at their stated `asOf` date, including days-on-market.
-
-To use a response you already possess from a **verified free** source, normalize it to the schema in `apps/search/src/shared/types.ts` (the complete example is `apps/search/fixtures/cars.json`) and run:
-
-```sh
-bun run cache:import /absolute/path/to/normalized-snapshot.json
-DATA_MODE=cache bun run dev
-```
-
-The top level is `{ "asOf": "YYYY-MM-DD", "source": "imported", "cars": [...] }`. Dates must be real ISO dates; IDs unique; prices positive integer GBP; mileage and days non-negative integers; history ascending, not later than `asOf`, with the final asking price matching the current price. Use `#RRGGBB` colors for local illustrations. The importer accepts at most 20 MB / 10,000 listings. Do not include personal seller information or secrets.
-
-Before extending live access, verify current API contracts, data-display/cache rights and account billing settings. Free-tier marketing or a request counter alone is insufficient. DVLA/DVSA are not wired into this search prototype.
-
-## Architecture
+## Repository structure
 
 ```text
-React UI ── same-origin GET /api/* ── Bun API
-   │                                   │
-localStorage                    mock fixtures OR local cache
-(watches/search stubs)            no outbound network branch
+apps/
+  buying-report/   Registration journey, report UI, provider integration and tests
+  search/          Enthusiast search, fixtures, live development preview and tests
+packages/
+  ui/              Shared CarScope branding
+scripts/           Workspace, runtime and production launchers
+docs/              Architecture and product notes
 ```
 
-- `apps/search/src/client/`: React interface, original SVG art, styles and browser storage.
-- `apps/search/src/server/config.ts`: validated local settings and live-mode guard.
-- `apps/search/src/server/data.ts`: fixture/cache loading, schema validation and public field projection.
-- `apps/search/src/server/search.ts`: filtering, sorting and comparable selection.
-- `apps/search/src/server/api.ts`: JSON responses and error statuses.
-- `apps/search/src/server/index.ts`: Bun server with HTML imports, frontend bundling and API routing.
-- `apps/search/scripts/import-cache.ts`: offline snapshot import.
-- `apps/search/tests/`: Bun-native tests. `docs/architecture.md`: V1 design and implementation sequence.
+Both applications use a same-origin React client and Bun API:
 
-Bun's [fullstack HTML support](https://bun.sh/docs/bundler/fullstack) serves the frontend and API from one origin, with hot reload in development. There is no Vite/Node server or CORS setup. Search uses SQLite only for its local spending ledger. Production build assets are served by Bun. Run commands from the project root. The start launcher preserves root environment/cache settings and changes into the selected app’s `dist/` before loading the built server, because Bun resolves its fullstack asset manifest against the working directory.
-
-| Endpoint | Result |
-| --- | --- |
-| `GET /api/status` | mode, source, snapshot date, `liveRequestsEnabled: false` |
-| `GET /api/cars` | listings, count and available make/feature options |
-| `GET /api/cars/:id` | car plus up to four same-make/model comparables, excluding itself |
-
-Query fields: `q`, `make`, `maxPrice`, `maxMileage`, comma-separated `features`, and `sort` (`recent`, `price-asc`, `price-desc`, `mileage`, `days`). Invalid numbers/sort return 400; missing car 404; local data failure 503; non-GET requests 405.
-
-Comparables are ordered by mileage proximity; differing trims, years and condition are not adjusted. The average is an unweighted **asking-price** average, not a valuation. History shows asking-price observations, never inferred transaction prices.
-
-## Prestige-only synthetic dataset
-
-The mock inventory now covers Lotus, Porsche, Ferrari, Aston Martin, Bentley, McLaren, Maserati and Lamborghini. `apps/search/fixtures/marketcheck/uk-active.json` uses the documented UK response structure; a mock-only adapter maps its fields to the existing UI. All values are fictional. See `apps/search/fixtures/marketcheck/README.md` for mapping scope and limitations.
-
-The cache importer is a generic local fixture utility, not permission to store MarketCheck responses. Do not import real provider responses without appropriate retention rights. Demo browsing remains offline.
-
-## Private supplier CSV sample
-
-The local importer also accepts the supplied UK inventory CSV. It selects Lotus, Porsche, Ferrari, Aston Martin, Bentley, McLaren, Maserati and Lamborghini; maps pipe-separated features; and validates the resulting dataset. It does not import contact details, registrations, remote photos, or dealer-directory records. `options` is not assumed to mean verified factory-fitted options.
-
-```sh
-CAR_CACHE_PATH=.cache/supplier-sample.json bun run cache:import /absolute/path/to/sample.csv
-DATA_MODE=cache CAR_CACHE_PATH=.cache/supplier-sample.json PORT=4317 ./dev
+```text
+React UI  ── /api/* ──>  Bun server  ──>  mock/local data
+                                  └──>  supplier API only after an explicit live action
 ```
 
-This sample is for private local evaluation at the user's direction; no public-display or redistribution rights are asserted. Imported data stays in ignored `.cache/`. The snapshot date comes from `status_date`. Only a single price observation is recorded: the CSV contains no historical price series. Generic illustrations are not listing photographs or verified paint representations. Missing required fields fail import rather than becoming zero values. Mock mode remains the default; no provider calls occur.
+The buying-report code separates provider transport, normalization, domain interpretation and presentation. Report chapters are independent React components, while status wording and buyer-facing summaries come from tested domain builders. This keeps supplier response shapes out of the UI and makes partial data predictable.
 
-## £10 development allowance
+## Development safeguards
 
-The web app remains offline by default. A separate manual count probe is available:
+- Mock mode is the default and has no outbound provider branch.
+- Live actions are explicit; selecting Live alone does not make a request.
+- Provider keys and raw billing fields remain server-side.
+- Missing optional packages produce a partial report with a visible data note.
+- Concurrent requests for the same report share one in-flight operation.
+- MarketCheck development requests use a local cumulative £10 reservation ledger; this is an engineering guard, not an account billing cap.
+- The test suite uses fixtures and does not consume supplier allowance.
 
-```sh
-MARKETCHECK_LIVE_ENABLED=true bun run marketcheck:count Porsche
-```
+Before any public launch, agree the final package, consumer-facing rights, provenance wording, retention rules and commercial pricing with the data supplier. Production also needs payment, report delivery, privacy and support flows.
 
-Set `MARKETCHECK_API_KEY` in ignored `.env` first. The command makes exactly one UK active-inventory request with `rows=0`; no retries, redirects or stored responses. It prints only the count. Do not route expensive valuation endpoints through this guard.
+## Search prototype
 
-`apps/search/src/server/budget.ts` fixes a cumulative £10 allowance, reserving **2p before each attempt**, including failures and calls covered by free quota. This is conservative against the published Starter standard-search rate of £0.012/call (check pricing before use). At most 500 attempts are allowed. SQLite accounting in ignored `.budget/marketcheck.sqlite` survives restarts and uses atomic updates across processes. Missing/corrupt accounting blocks requests. Never delete/reset this ledger to recover allowance; reconcile it with the supplier dashboard first. A fresh checkout requires deliberate ledger provisioning, not automatic initialization on first request.
+The search app supports text and structured filtering across make, model, derivative, year, transmission, price, mileage and equipment preferences. It includes responsive result cards, shared detail views, asking-price history, current-batch comparables, and browser-local watch/search prototypes.
 
-This is a local estimated-spend guard, **not a MarketCheck account billing cap**. It cannot cover portal/MCP/connector requests, another checkout, changed tariffs or other account fees. No automatic monthly reset. Keep supplier usage alerts enabled. The default UI and tests still make no provider calls.
+Its default inventory is fictional and offline. A separately controlled `/live` route can query MarketCheck during deliberate local testing. It does not poll, retry or persist responses. Search pagination and opening a live detail each count as another request.
 
-## Offline sample photos
+## Licence
 
-Lotus, Porsche, Ferrari and Bentley cards/details use local Creative Commons sample photographs, with creator/license credits. Other marques and failed image loads retain the SVG fallback. Photos are illustrative and may differ in year, paint or specification. See `apps/search/src/client/assets/cars/credits.json` for source and licensing; no MarketCheck images or image API calls are used.
-
-## Expanded enthusiast catalogue and precise search
-
-The user-supplied tour list now defines eligibility in `apps/search/src/shared/catalogue.ts`. All-model marques and model/derivative-specific rules are separate; this is not an official endorsement. Names are normalized for eligibility; ambiguous performance badges fail closed. Supplier naming variants may need explicit additions as live coverage is audited. The CSV importer uses the same rules; existing imported snapshots are not rewritten.
-
-Search combines text with make, model, generation, derivative, inclusive year bounds and transmission. Dependent options reflect the local eligible inventory; catalogue marques without fixtures currently return no results. Generation is optional and never inferred from year; select Unknown for missing metadata. Changing a parent filter clears its children. URL links, browser navigation and saved searches preserve criteria.
-
-Fourteen additional fictional examples bring the default demo to 26 cars, including Porsche 911 generations, Supra, RX-7, NSX, Audi RS6, BMW M3 and Mustang GT. Original Cayman fixtures explicitly declare 981 / GT4. API query fields added: `model`, `generation`, `derivative`, `minYear`, `maxYear`, `transmission`. No provider requests are made.
-
-## Controlled live browser preview
-
-Open `/live` on the local server. The default demo remains offline. Opening the preview reads only local key availability and spend accounting; changing fields makes no calls. Pressing Search requests up to 50 provider listings (make/model, derivative, transmission and numeric limits); opening details requests one listing. Pagination and reopening details incur another reservation. No polling, retries, live response persistence or browser storage. Responses stay in component memory for the displayed search and disappear on reload. The UI uses dealer image URLs, never MarketCheck cached-image URLs.
-
-Each inventory/detail attempt reserves 2p against the same cumulative £10 ledger. Loopback host and same-origin JSON POST checks guard paid operations. This is a single-user local development preview, not an authenticated production service. Do not expose it publicly. Budget status is local estimated accounting, not actual supplier billing. Start with one Porsche / 911 search and one detail: 4p reserved. No generation inference is performed. Equipment wording is checked locally when details are opened.
-
-## Integrated live discovery
-
-Live cars now shares the main app navigation, hero, sidebar and result styling at `/live`. Demo cars, demo watchlists and demo alerts remain explicitly labelled. Opening/switching modes does not submit provider requests. Leaving live mode discards transient results; returning requires an explicit new search. Browser Back switches modes without a paid call. Live equipment evidence matching is available on details. Generation filters, watches and alerts are not implemented yet.
-
-## IDE run buttons / npm commands
-
-The package scripts use `scripts/bun.sh` to locate `.tools/bun` first, then a Bun installation on PATH. A global Bun installation is not required on this Mac. Set the IDE working directory to the CarScope project root. `npm run dev` starts development; `npm run build` then `npm run start` runs the production build. npm only launches the scripts; Bun still runs the application. The local binary is ignored by Git, so a fresh checkout needs Bun installed or supplied locally.
-
-## Live specification evidence
-
-The detail view now applies local, rule-based matching to the already-fetched features, options and seller description. Supported preferences: air conditioning (including climate control), carbon seats, full service history, and Porsche Sport Chrono / ceramic brakes. Every match includes its source and excerpt. Options-only mentions and ambiguous wording require confirmation; explicit absence and contradictory claims remain visible. No additional provider or AI calls, embeddings or stored extracted records are used. This is conservative phrase recognition, not factory verification or complete natural-language understanding. Unknown means no recognised evidence, not proven absence.
-
-## Search before the first request
-
-`apps/search/src/shared/search-catalogue.ts` contains independently authored model suggestions and derivative families; it does not store MarketCheck responses. Porsche 911 families and selected other models are available immediately. Models remain editable and an exact-variant field supports designations outside the catalogue. Families expand to comma-separated exact names in the same inventory call. This vocabulary is provisional and not exhaustive: provider spellings may differ, so no result does not prove market absence. Validate and refine the mapping during deliberately budgeted live testing. Generation remains out of the live form.
-
-The shared page size is 50 (`rows=50`, `start=page*50`). The grid shows the entire eligible batch; next/previous batch buttons explicitly state another request and a 2p reservation. Moving between batches replaces the current batch rather than archiving earlier responses. Provider totals are before eligibility checks, and provider plan limits may restrict pagination depth.
-
-Equipment preferences start empty in the live sidebar and carry into detail views, where they can also be changed. They are a wish list, not confirmed equipment or exclusion filters. Cards say “Specification not checked”; opening details checks the evidence already returned by that detail request. Preference changes never trigger a request. Nothing is persisted across reloads.
-
-## Equipment wish lists across marques
-
-The shared `PreferenceEditor` groups choices into seats, driving, comfort, technology and appearance. Local make/model suggestions supplement these choices; they are names to investigate, not fitment or availability claims. Each selected option has a Must-have or Nice-to-have priority. Preferences survive make/model changes within the live view and remain individually removable, so a custom wish list is not silently discarded. Reset clears the list.
-
-Custom entries are limited to 80 characters and 20 preferences, deduplicated case-insensitively, and matched as escaped literal phrases. Curated generic equipment aliases cover common wording (including several audio brands). There is no semantic AI inference or rarity score. Detail evidence highlights unsupported must-haves, but neither priority excludes results. All matching runs on already-loaded details without extra requests, persistence or billing. Synthetic tests cover Porsche, BMW, Audi and Mercedes wording and preserve uncertainty for options-only mentions.
-
-## Shared detail page and offline response examples
-
-Demo and live detail views now render `CarDetailPage`, using adapters in `apps/search/src/shared/detail.ts`. Live detail hides the search form; “Your requirements” is a read-only summary, with an edit action returning to the search preferences. Long equipment lists and the seller description are collapsed. Highlight selection is for presentation only, not a claim of rarity, standard equipment, or factory-fitted options. Options and other features are labelled as advertised because the supplier schema does not reliably separate standard from fitted optional equipment.
-
-Live projection retains `ref_price`, `ref_price_dt`, and `last_seen_at`. Only valid supplied dates/prices become chart observations. Reference and current observations are not presented as a complete history, and no intermediate changes or sale prices are invented. Comparisons use up to four other same-make/model listings from the current search batch, sorted by mileage proximity when known. Missing prices are excluded from averages. Rendering comparisons makes no extra provider call; opening a live comparison explicitly reserves 2p for its detail request.
-
-Open `/detail-demo` for a free offline preview: rich specification, missing information, and conflicting equipment. These are invented response-shaped fixtures in `apps/search/src/shared/detail-example.ts`, passed through the same listing projection and detail adapter as live responses. The preview performs no API requests and stores no supplier snapshot. Use its scenario selector and edit-preferences action to test the shared UI. Normal demo listings also use the shared page with their existing fictional price histories.
-
-### Private normalized report examples
-
-The four Mock vehicles share the same preview and report journey. Their normalized
-reports live only in ignored `.local/*-report.json` files and opening them makes no
-supplier request. Reports can include supplier model imagery, specifications,
-mileage charts, expandable yearly history, valuation assumptions, tax observations,
-tyre fitments and EV charging details when returned. Missing fields remain visible
-as gaps. There is no advert parsing or dealer-supplied information.
-
-### Vehicle Data Global sandbox lookup
-
-The buying-report service can generate a report for any registration accepted by
-the Vehicle Data Global sandbox. Set `VDG_SANDBOX_ENABLED=true` and put the sandbox
-key in `VDG_API_KEY` in the ignored `.env` file, then run `npm run dev:report`.
-
-Identification requests the custom `CarScopeFree` package once, returning vehicle,
-model, image, MOT-history and tax data for the public preview. Full report generation then
-requests `VDICheck`, `ValuationDetails`, and `TyreDetails` concurrently. Concurrent
-generation for the same preview shares one in-flight operation; completed responses
-are not cached or archived. Missing history, valuation or tyre packages produce a
-partial report with a visible data note. The sandbox only accepts registrations
-containing the letter A and its results may be up to 12 months out of date. The API
-key is used only by the Bun server and is never sent to the browser.
-
-EV battery, range, consumption and 10–80% charging information is read from the
-`Powertrain.EvDetails` section already returned by `CarScopeFree`.
-`BatteryDetails` is not requested: that package describes the starter battery and
-returned no traction-battery result for the tested Tesla. EV specifications are
-clearly separated from present battery health, which this integration does not test.
+CarScope is licensed under the [MIT Licence](LICENSE).
