@@ -1,4 +1,5 @@
 export function formatMoney(value: number): string {
+  if (!Number.isFinite(value)) return 'Unavailable';
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
     currency: 'GBP',
@@ -7,6 +8,7 @@ export function formatMoney(value: number): string {
 }
 
 export function formatDuration(minutes: number): string {
+  if (!Number.isFinite(minutes) || minutes < 0) return 'Unavailable';
   const hours = Math.floor(minutes / 60);
   const remaining = minutes % 60;
   return (
@@ -23,6 +25,7 @@ export function formatRegistration(value: string): string {
 
 export function formatDate(value: string): string {
   const day = /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
+  if (!Number.isFinite(Date.parse(`${day}T12:00:00Z`))) return 'Unavailable';
   return new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
     month: 'short',

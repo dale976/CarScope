@@ -15,6 +15,12 @@ test('formats report values consistently', () => {
   expect(formatDate('2026-09-20')).toBe('20 Sep 2026');
 });
 
+test('invalid formatter inputs stay unavailable', () => {
+  expect(formatMoney(Number.NaN)).toBe('Unavailable');
+  expect(formatDuration(Number.NaN)).toBe('Unavailable');
+  expect(formatDate('Date unavailable')).toBe('Unavailable');
+});
+
 test('builds honest vehicle status displays', () => {
   expect(buildMotDisplay({ status: 'valid', dueDate: '2027-05-10' }).label).toBe('MOT valid');
   expect(buildTaxDisplay(undefined).label).toBe('Tax status unavailable');

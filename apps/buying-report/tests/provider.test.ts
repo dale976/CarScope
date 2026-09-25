@@ -308,6 +308,24 @@ test('completion does not retry a failed optional package', async () => {
   expect(report.evidence?.notes.join(' ')).toContain('ValuationDetails unavailable');
 });
 
+test('failed provenance package leaves checks not checked', async () => {
+  const fetcher: Fetcher = async (input) => {
+    const packageName = new URL(String(input)).searchParams.get('packagename');
+    if (packageName === 'VDICheck') return new Response('Unavailable', { status: 503 });
+    return Response.json(packageName === 'ValuationDetails' ? valuation : tyres);
+  };
+  const report = await completeSandboxReport('SL60AUC', details.Results, {
+    apiKey: 'secret',
+    fetcher,
+  });
+  expect(report.checks).toEqual([
+    { name: 'Finance', status: 'not-checked' },
+    { name: 'Stolen status', status: 'not-checked' },
+    { name: 'Insurance write-off', status: 'not-checked' },
+  ]);
+  expect(report.evidence?.notes.join(' ')).toContain('VDICheck unavailable');
+});
+
 test('finance records retain useful lender details but discard the agreement number', async () => {
   const financeVdi = {
     Results: {
@@ -435,6 +453,32 @@ test('vehicle details are required to identify the car', async () => {
       : Response.json(packageName === 'VDICheck' ? vdi : valuation);
   };
   await expect(lookupSandboxReport('SL60AUC', { apiKey: 'secret', fetcher })).rejects.toThrow(
+    'identify the vehicle',
+  );
+});
+
+test('malformed tyre entries are ignored instead of crashing the report', async () => {
+  const fetcher: Fetcher = async (input) => {
+    const packageName = new URL(String(input)).searchParams.get('packagename');
+    if (packageName === 'TyreDetails')
+      return Response.json({ Results: { TyreDetails: { TyreDetailsList: [null] } } });
+    return Response.json(packageName === 'VDICheck' ? vdi : valuation);
+  };
+  const report = await completeSandboxReport('SL60AUC', details.Results, {
+    apiKey: 'secret',
+    fetcher,
+  });
+  expect(report.evidence?.tyres).toEqual([]);
+});
+
+test('a make without a model is not enough to identify a vehicle', async () => {
+  const incomplete = {
+    Results: {
+      VehicleDetails: { VehicleIdentification: { DvlaMake: 'FIAT' } },
+    },
+  };
+  const fetcher: Fetcher = async () => Response.json(incomplete);
+  await expect(lookupSandboxPreview('SL60AUC', { apiKey: 'secret', fetcher })).rejects.toThrow(
     'identify the vehicle',
   );
 });

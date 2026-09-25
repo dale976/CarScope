@@ -6,7 +6,10 @@ const day = (value: unknown) =>
   typeof value === 'string' && value.length >= 10 ? value.slice(0, 10) : undefined;
 const number = (value: unknown) =>
   typeof value === 'number' && Number.isFinite(value) ? value : undefined;
-const list = (value: unknown): Json[] => (Array.isArray(value) ? value : []);
+const list = (value: unknown): Json[] =>
+  Array.isArray(value)
+    ? value.filter((item): item is Json => item !== null && typeof item === 'object')
+    : [];
 const title = (value: unknown) =>
   typeof value === 'string'
     ? value.toLowerCase().replace(/(^|\s)\S/g, (c) => c.toUpperCase())
@@ -135,6 +138,7 @@ export function buildReport(
   valuation: Json | undefined,
   tyreDetails: Json | undefined,
   missing: string[],
+  provenanceChecked = vdi !== undefined,
 ): BuyingReport {
   const vehicle = details.VehicleDetails ?? {};
   const identification = vehicle.VehicleIdentification ?? {};
@@ -179,7 +183,11 @@ export function buildReport(
   ]
     .filter(Boolean)
     .join(' ');
-  if (!vehicleName) throw new Error('Vehicle details did not identify the vehicle.');
+  if (
+    !vehicleTitle(modelId.Make ?? identification.DvlaMake) ||
+    !vehicleTitle(modelId.Model ?? identification.DvlaModel)
+  )
+    throw new Error('Vehicle details did not identify the vehicle.');
   const colours = history.ColourDetails ?? {};
   const transmission = powertrain.Transmission ?? {};
   const ice = powertrain.IceDetails ?? {};
@@ -358,19 +366,27 @@ export function buildReport(
     checks: [
       {
         name: 'Finance',
-        status: vdi ? (finance.length ? 'record-returned' : 'none-returned') : 'not-checked',
+        status: provenanceChecked
+          ? finance.length
+            ? 'record-returned'
+            : 'none-returned'
+          : 'not-checked',
       },
       {
         name: 'Stolen status',
-        status: vdi
-          ? vdi.PncDetails?.IsStolen
+        status: provenanceChecked
+          ? vdi?.PncDetails?.IsStolen
             ? 'record-returned'
             : 'none-returned'
           : 'not-checked',
       },
       {
         name: 'Insurance write-off',
-        status: vdi ? (writeOffs.length ? 'record-returned' : 'none-returned') : 'not-checked',
+        status: provenanceChecked
+          ? writeOffs.length
+            ? 'record-returned'
+            : 'none-returned'
+          : 'not-checked',
       },
     ],
     costs: [],

@@ -51,7 +51,15 @@ export async function lookupSandboxPreview(
       'The development service could not identify the vehicle because vehicle details were unavailable.',
     );
   }
-  const report = buildReport(registration, previewData, previewData, undefined, undefined, []);
+  const report = buildReport(
+    registration,
+    previewData,
+    previewData,
+    undefined,
+    undefined,
+    [],
+    false,
+  );
   const { previewId: _, ...preview } = projectReportPreview(report, 'server-only', 'live');
   return { preview, details: previewData, previewData };
 }
@@ -85,5 +93,6 @@ export async function completeSandboxReport(
     results.get('ValuationDetails'),
     results.get('TyreDetails'),
     missing,
+    results.has('VDICheck'),
   );
 }
