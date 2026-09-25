@@ -3,45 +3,9 @@ import { VehicleFacts, VehiclePortrait } from './VehicleStory';
 import type { BuyingReport } from '../shared/report';
 import type { ReactNode } from 'react';
 import { dateLabel, reportAnchor } from '../shared/history';
-import { resolvedMotStatus, statusCopy, type VehiclePreview } from '../shared/preview';
-const money = (n: number) =>
-  new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    maximumFractionDigits: 0,
-  }).format(n);
-const duration = (minutes: number) => {
-  const hours = Math.floor(minutes / 60),
-    remaining = minutes % 60;
-  return (
-    [hours ? `${hours} hr` : null, remaining ? `${remaining} min` : null]
-      .filter(Boolean)
-      .join(' ') || '0 min'
-  );
-};
-const registrationLabel = (value: string) => {
-  const clean = value.toUpperCase().replace(/\s/g, '');
-  return clean.length === 7 ? `${clean.slice(0, 4)} ${clean.slice(4)}` : clean;
-};
-const motStatusLabel = (status: NonNullable<VehiclePreview['mot']>['status']) =>
-  ({
-    valid: 'MOT valid',
-    expired: 'MOT expired',
-    failed: 'Latest MOT failed',
-    exempt: 'MOT exempt',
-    unavailable: 'MOT status unavailable',
-    'not-yet-due': 'First MOT not yet due',
-  })[status];
-const taxStatusLabel = (status: NonNullable<BuyingReport['tax']>['status']) =>
-  status
-    ? {
-        taxed: 'Taxed',
-        untaxed: 'Untaxed',
-        sorn: 'SORN',
-        exempt: 'Tax exempt',
-        unavailable: 'Tax status unavailable',
-      }[status]
-    : 'Tax status unavailable';
+import { resolvedMotStatus } from '../shared/preview';
+import { formatDuration, formatMoney, formatRegistration } from '../domain/formatters';
+import { buildMotDisplay, buildTaxDisplay } from '../domain/vehicle-status';
 function EvSection({ ev }: { ev: NonNullable<BuyingReport['ev']> }) {
   const milesPerKwh = ev.consumptionWhMile ? 1000 / ev.consumptionWhMile : undefined;
   const warranty =
@@ -105,7 +69,7 @@ function EvSection({ ev }: { ev: NonNullable<BuyingReport['ev']> }) {
                   {port.times.map((time) => (
                     <div key={time.powerKw}>
                       <dt>{time.powerKw} kW</dt>
-                      <dd>{duration(time.minutes)}</dd>
+                      <dd>{formatDuration(time.minutes)}</dd>
                     </div>
                   ))}
                 </dl>
@@ -236,14 +200,8 @@ function RecordOverview({ report }: { report: BuyingReport }) {
       })),
   ];
   const motStatus = resolvedMotStatus(report);
-  const motFreshness = motStatus ? statusCopy(motStatus) : 'Status not established';
-  const taxFreshness = report.tax
-    ? statusCopy({
-        status: report.tax.status ?? 'unavailable',
-        dueDate: report.tax.dueDate,
-        sourceDate: report.tax.date,
-      })
-    : 'Status not established';
+  const motDisplay = buildMotDisplay(motStatus);
+  const taxDisplay = buildTaxDisplay(report.tax);
   return (
     <section className="record-overview" aria-labelledby="record-overview-title">
       <div className="overview-heading">
@@ -257,15 +215,15 @@ function RecordOverview({ report }: { report: BuyingReport }) {
         </p>
       </div>
       <div className="current-status-grid">
-        <div data-state={motStatus?.status ?? 'unavailable'}>
+        <div data-state={motDisplay.tone}>
           <span>MOT status</span>
-          <strong>{motStatus ? motStatusLabel(motStatus.status) : 'Unavailable'}</strong>
-          <small>{motFreshness}</small>
+          <strong>{motDisplay.label}</strong>
+          <small>{motDisplay.detail}</small>
         </div>
-        <div data-state={report.tax?.status ?? 'unavailable'}>
+        <div data-state={taxDisplay.tone}>
           <span>Tax status</span>
-          <strong>{taxStatusLabel(report.tax?.status)}</strong>
-          <small>{taxFreshness}</small>
+          <strong>{taxDisplay.label}</strong>
+          <small>{taxDisplay.detail}</small>
         </div>
       </div>
       <div className="overview-stats">
@@ -519,7 +477,7 @@ export function ReportView({ report }: { report: BuyingReport }) {
         {report.registration && (
           <div className="vehicle-registration">
             <span>Registration</span>
-            <strong>{registrationLabel(report.registration)}</strong>
+            <strong>{formatRegistration(report.registration)}</strong>
           </div>
         )}
       </section>
@@ -626,7 +584,7 @@ export function ReportView({ report }: { report: BuyingReport }) {
                 {report.evidence.valuation.figures.map((v) => (
                   <div className="check-row" key={v.label}>
                     <span>{v.label}</span>
-                    <strong>{money(v.value)}</strong>
+                    <strong>{formatMoney(v.value)}</strong>
                   </div>
                 ))}
                 <p className="action-note">
@@ -643,16 +601,18 @@ export function ReportView({ report }: { report: BuyingReport }) {
               <p className="eyebrow">Running costs</p>
               <h3>Known cost assumptions</h3>
               <div className="cost-total">
-                <strong>{money(total)}</strong>
+                <strong>{formatMoney(total)}</strong>
                 <span>/ year</span>
               </div>
-              <p className="cost-subtotal">Partial budget · about {money(total / 12)} a month</p>
+              <p className="cost-subtotal">
+                Partial budget · about {formatMoney(total / 12)} a month
+              </p>
               <div className="cost-items">
                 {report.costs.map((c) => (
                   <details key={c.label}>
                     <summary>
                       <span>{c.label}</span>
-                      <b>{money(c.annualPounds)}</b>
+                      <b>{formatMoney(c.annualPounds)}</b>
                     </summary>
                     <p>{c.assumption}</p>
                   </details>
@@ -692,14 +652,8 @@ export function ReportView({ report }: { report: BuyingReport }) {
               <>
                 <div className={`status-banner ${report.tax.status ?? 'unavailable'}`}>
                   <span>Tax status</span>
-                  <strong>{taxStatusLabel(report.tax.status)}</strong>
-                  <small>
-                    {statusCopy({
-                      status: report.tax.status ?? 'unavailable',
-                      dueDate: report.tax.dueDate,
-                      sourceDate: report.tax.date,
-                    })}
-                  </small>
+                  <strong>{buildTaxDisplay(report.tax).label}</strong>
+                  <small>{buildTaxDisplay(report.tax).detail}</small>
                 </div>
                 <p className="data-context">
                   Supplier information ·{' '}
@@ -714,7 +668,7 @@ export function ReportView({ report }: { report: BuyingReport }) {
                 {report.tax.rates.map((r) => (
                   <div className="check-row" key={r.label}>
                     <span>{r.label}</span>
-                    <strong>{money(r.amount)}</strong>
+                    <strong>{formatMoney(r.amount)}</strong>
                   </div>
                 ))}
                 <p className="action-note">

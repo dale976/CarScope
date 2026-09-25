@@ -1,14 +1,6 @@
-import { displayDate, statusCopy, type DataMode, type VehiclePreview } from '../shared/preview';
-
-const plate = (value: string) =>
-  value.length > 3 ? `${value.slice(0, -3)} ${value.slice(-3)}` : value;
-const label = (value: string) => value.charAt(0).toUpperCase() + value.slice(1);
-const motLabel = (status: NonNullable<VehiclePreview['mot']>['status']) =>
-  status === 'not-yet-due'
-    ? 'First MOT not yet due'
-    : status === 'unavailable'
-      ? 'MOT status not established'
-      : `MOT ${status}`;
+import { formatDate, formatRegistration } from '../domain/formatters';
+import { buildMotDisplay, buildTaxDisplay } from '../domain/vehicle-status';
+import type { DataMode, VehiclePreview } from '../shared/preview';
 
 export function VehiclePreviewCard({
   preview,
@@ -25,6 +17,8 @@ export function VehiclePreviewCard({
 }) {
   const mot = preview.mot;
   const tax = preview.tax;
+  const motDisplay = buildMotDisplay(mot);
+  const taxDisplay = buildTaxDisplay(tax);
   return (
     <section className="focused-preview" aria-labelledby="preview-title">
       <div className="preview-identity">
@@ -43,22 +37,24 @@ export function VehiclePreviewCard({
           </p>
           {preview.vehicle.registered && (
             <p className="preview-registered">
-              First registered {displayDate(preview.vehicle.registered)}
+              First registered {formatDate(preview.vehicle.registered)}
             </p>
           )}
         </div>
-        <strong className="preview-plate">{plate(preview.registration)}</strong>
+        <strong className="preview-plate">{formatRegistration(preview.registration)}</strong>
       </div>
       <div className="preview-evidence">
         <div className="preview-status" data-state={mot?.status ?? 'unavailable'}>
           <span>MOT status</span>
-          <strong>{mot ? motLabel(mot.status) : 'MOT status not established'}</strong>
-          <small>{mot ? statusCopy(mot) : 'Status not established'}</small>
+          <strong>
+            {!mot || mot.status === 'unavailable' ? 'MOT status not established' : motDisplay.label}
+          </strong>
+          <small>{motDisplay.detail}</small>
         </div>
         <div className="preview-status" data-state={tax?.status ?? 'unavailable'}>
           <span>Tax status</span>
-          <strong>{tax ? label(tax.status) : 'Tax status not established'}</strong>
-          <small>{tax ? statusCopy(tax) : 'Status not established'}</small>
+          <strong>{tax ? taxDisplay.label : 'Tax status not established'}</strong>
+          <small>{taxDisplay.detail}</small>
         </div>
         <div className="preview-coverage">
           <span>History coverage</span>
