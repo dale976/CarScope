@@ -5,8 +5,8 @@ import {loadMockReport} from './mock-reports';
 import {completeSandboxReport,lookupSandboxPreview,type ProviderVehicleDetails} from './provider';
 import {createPreviewSessions,type PreviewSessions} from './preview-sessions';
 
-type IdentifiedLive={preview:Omit<VehiclePreview,'previewId'>;details:ProviderVehicleDetails};
-type Options={env?:Record<string,string|undefined>;sessions?:PreviewSessions;loadMock?:(registration:string)=>BuyingReport;completeMock?:(report:BuyingReport)=>Promise<BuyingReport>;identifyLive?:(registration:string,options:{apiKey:string})=>Promise<IdentifiedLive>;completeLive?:(registration:string,details:ProviderVehicleDetails,options:{apiKey:string})=>Promise<BuyingReport>};
+type IdentifiedLive={preview:Omit<VehiclePreview,'previewId'>;details:ProviderVehicleDetails;previewData:ProviderVehicleDetails};
+type Options={env?:Record<string,string|undefined>;sessions?:PreviewSessions;loadMock?:(registration:string)=>BuyingReport;completeMock?:(report:BuyingReport)=>Promise<BuyingReport>;identifyLive?:(registration:string,options:{apiKey:string})=>Promise<IdentifiedLive>;completeLive?:(registration:string,details:ProviderVehicleDetails,options:{apiKey:string},previewData:ProviderVehicleDetails)=>Promise<BuyingReport>};
 const noStore={'Cache-Control':'no-store'};
 const json=(value:unknown,init:ResponseInit={})=>Response.json(value,{...init,headers:{...noStore,...init.headers}});
 const registration=(value:unknown)=>{const normalized=typeof value==='string'?value.toUpperCase().replace(/\s/g,''):'';if(!/^[A-Z0-9]{2,8}$/.test(normalized))throw new Error('Enter a valid UK registration.');return normalized;};
@@ -44,14 +44,14 @@ export function createReportApi(options:Options={}){
      return json(projectReportPreview(report,previewId,mode));
     }
     if(env.VDG_SANDBOX_ENABLED!=='true'||!env.VDG_API_KEY)throw new Error('Live sandbox lookup is not configured.');
-    const identified=await identifyLive(reg,{apiKey:env.VDG_API_KEY});const previewId=sessions.create({mode,registration:reg,details:identified.details});
+    const identified=await identifyLive(reg,{apiKey:env.VDG_API_KEY});const previewId=sessions.create({mode,registration:reg,details:identified.details,previewData:identified.previewData});
     return json({...identified.preview,previewId});
    }
    const previewId=typeof input.previewId==='string'?input.previewId:'';if(!previewId)throw new Error('Preview expired or unavailable. Identify the vehicle again.');
    const report=await sessions.complete(previewId,mode,reg,async session=>{
     if(session.mode==='mock')return completeMock(session.report);
     if(!env.VDG_API_KEY)throw new Error('Live sandbox lookup is not configured.');
-    return completeLive(reg,session.details,{apiKey:env.VDG_API_KEY});
+    return completeLive(reg,session.details,{apiKey:env.VDG_API_KEY},session.previewData);
    });
    return json(report);
   }catch(error){

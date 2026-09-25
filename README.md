@@ -17,7 +17,7 @@ Run these from the repository root; npm launches Bun rather than replacing it:
 | Command | Result |
 | --- | --- |
 | `npm run dev` | Search, default http://127.0.0.1:3000 |
-| `npm run dev:report` | Buying report, default http://127.0.0.1:3001 |
+| `npm run dev:report` | Buying report, default http://127.0.0.1:9000 |
 | `npm run build` | Production builds for both apps |
 | `npm run start` | Built search app |
 | `npm run start:report` | Built buying-report app |
@@ -28,11 +28,11 @@ The equivalent `bun run …` commands work too. App folders also expose dev/star
 
 ### Buying-report prototype
 
-Run `npm run dev:report` and open http://127.0.0.1:3001. The journey starts in **Mock** on every reload: enter a registration, review the free vehicle preview, then open the complete report. Four private local examples are available: Porsche `DF74 FPA`, Lotus `YJ22 ACU`, Fiat `SL60 AUC` and Tesla `LD17 VAE`.
+Run `npm run dev:report` and open http://127.0.0.1:9000. The journey starts in **Mock** on every reload: enter a registration, review the free vehicle preview, then open the complete report. Four private local examples are available: Porsche `DF74 FPA`, Lotus `YJ22 ACU`, Fiat `SL60 AUC` and Tesla `LD17 VAE`.
 
 Mock reads normalized reports from the ignored `.local/` directory and has no supplier-network branch. Keep these files private: they can contain licensed or personal vehicle observations and must never be committed. A missing example fails clearly rather than calling a provider.
 
-**Live** is an explicit development option. Merely selecting it makes no request. “Identify vehicle” makes one `VehicleDetailsWithImage` call; “View complete report” makes three calls for VDI, valuation and tyres, with no retries. Raw provider responses, credentials and billing data stay server-side. The server holds the vehicle-details response for up to 30 minutes behind a random preview ID, then discards it after successful generation or expiry. Completed reports are not persisted.
+**Live** is an explicit development option. Merely selecting it makes no request. “Identify vehicle” makes one `CarScopeFree` call for vehicle identity, image, MOT and tax data; “View complete report” makes three calls for VDI, valuation and tyres, with no retries. Raw provider responses, credentials and billing data stay server-side. The server holds the preview response for up to 30 minutes behind a random preview ID, then discards it after successful generation or expiry. Completed reports are not persisted.
 
 Great Britain digital MOT history generally begins in 2005. Older, imported and exempt vehicles may return partial or no MOT evidence. Missing evidence is shown as not returned and never treated as a clear history. Status wording uses supplied dates and does not describe an old observation as current.
 
@@ -99,7 +99,7 @@ No `.env` file or keys are needed. To customize local settings, copy `.env.examp
 | `DATA_MODE` | `mock` | `mock` reads committed fixtures; `cache` reads only a local snapshot. Every other value, including `live`, stops startup. |
 | `HOST` | `127.0.0.1` | Local-only by default. |
 | `PORT` | `3000` | Search port, valid integer 1–65535. |
-| `REPORT_PORT` | `3001` | Independent buying-report port, valid integer 1–65535. |
+| `REPORT_PORT` | `9000` | Independent buying-report port, valid integer 1–65535. |
 | `CAR_CACHE_PATH` | `.cache/cars.json` | Local normalized snapshot path, relative to project root unless absolute. |
 | `MARKETCHECK_API_KEY` | empty | Server-only key for explicit live search/detail requests and the manual count command. |
 | `DVLA_API_KEY` | empty | Reserved server-only placeholder. |
@@ -261,7 +261,8 @@ The buying-report service can generate a report for any registration accepted by
 the Vehicle Data Global sandbox. Set `VDG_SANDBOX_ENABLED=true` and put the sandbox
 key in `VDG_API_KEY` in the ignored `.env` file, then run `npm run dev:report`.
 
-Identification requests `VehicleDetailsWithImage` once. Full report generation then
+Identification requests the custom `CarScopeFree` package once, returning vehicle,
+model, image, MOT-history and tax data for the public preview. Full report generation then
 requests `VDICheck`, `ValuationDetails`, and `TyreDetails` concurrently. Concurrent
 generation for the same preview shares one in-flight operation; completed responses
 are not cached or archived. Missing history, valuation or tyre packages produce a
@@ -270,7 +271,7 @@ containing the letter A and its results may be up to 12 months out of date. The 
 key is used only by the Bun server and is never sent to the browser.
 
 EV battery, range, consumption and 10–80% charging information is read from the
-`Powertrain.EvDetails` section already returned by `VehicleDetailsWithImage`.
+`Powertrain.EvDetails` section already returned by `CarScopeFree`.
 `BatteryDetails` is not requested: that package describes the starter battery and
 returned no traction-battery result for the tested Tesla. EV specifications are
 clearly separated from present battery health, which this integration does not test.

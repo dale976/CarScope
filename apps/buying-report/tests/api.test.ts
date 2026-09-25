@@ -14,7 +14,7 @@ test('API returns the fictional example and rejects other requests',async()=>{
  expect((await api(new Request('http://localhost/api/unknown'))).status).toBe(404);
 });
 test('report config is independent from search port and provider keys',()=>{
- expect(readReportConfig({PORT:'4321'})).toEqual({host:'127.0.0.1',port:3001});
+ expect(readReportConfig({PORT:'4321'})).toEqual({host:'127.0.0.1',port:9000});
  expect(readReportConfig({REPORT_PORT:'4322'}).port).toBe(4322);
  for(const value of ['abc','0','65536','3.5'])expect(()=>readReportConfig({REPORT_PORT:value})).toThrow();
 });
@@ -37,7 +37,7 @@ test('mock preview stays local and exposes only the public projection',async()=>
 
 test('live preview invokes identification once and generation invokes completion once',async()=>{
  let identifyCalls=0,completeCalls=0;
- const api=createReportApi({env:{VDG_SANDBOX_ENABLED:'true',VDG_API_KEY:'key'},identifyLive:async registration=>{identifyCalls++;return {preview:{registration,source:'live',vehicle:{name:'Tesla Model X 75D',year:2017},coverage:{message:'Detailed history is checked in the complete report'}},details:{VehicleDetails:{private:true}} as ProviderVehicleDetails};},completeLive:async()=>{completeCalls++;return report;}});
+ const api=createReportApi({env:{VDG_SANDBOX_ENABLED:'true',VDG_API_KEY:'key'},identifyLive:async registration=>{identifyCalls++;return {preview:{registration,source:'live',vehicle:{name:'Tesla Model X 75D',year:2017},coverage:{message:'Detailed history is checked in the complete report'}},details:{VehicleDetails:{private:true}} as ProviderVehicleDetails,previewData:{VehicleTaxDetails:{private:true}} as ProviderVehicleDetails};},completeLive:async()=>{completeCalls++;return report;}});
  const previewResponse=await api(post('/api/report-preview',{mode:'live',registration:'LD17VAE'}));
  const preview=await previewResponse.json();
  expect(identifyCalls).toBe(1);expect(JSON.stringify(preview)).not.toContain('private');

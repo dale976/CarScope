@@ -20,6 +20,24 @@ test('coverage describes returned evidence without claiming completeness',()=>{
  expect(coverageForReport({...report,evidence:{mot:[],tyres:[],notes:[]}}).message).toBe('No MOT tests returned');
 });
 
+test('a car under three years old is presented as not yet due its first MOT',()=>{
+ const youngCar={...report,vehicle:{...report.vehicle,name:'Porsche 718 Boxster GTS 4.0 PDK',year:2024},detail:{...report.detail!,registered:'2024-11-22'},motStatus:undefined,evidence:{...report.evidence!,mot:[]}};
+ const preview=projectReportPreview(youngCar,'porsche','mock',{asOf:'2026-09-24'});
+ expect(preview.vehicle.registered).toBe('2024-11-22');
+ expect(preview.mot).toEqual({status:'not-yet-due',dueDate:'2027-11-22'});
+ expect(preview.coverage).toEqual({motRecordCount:0,message:'No MOT tests expected before the first test is due'});
+ expect(statusCopy(preview.mot!,{asOf:'2026-09-24'})).toBe('Usually due by 22 Nov 2027');
+});
+
+test('stale mock reports recover MOT status from their latest test evidence',()=>{
+ const lotus={...report,motStatus:undefined,evidence:{...report.evidence!,mot:[{date:'2026-04-24',mileage:8541,expiry:'2027-05-10',result:'pass' as const}]}};
+ const valid=projectReportPreview(lotus,'lotus','mock',{asOf:'2026-09-24'});
+ expect(valid.mot).toEqual({status:'valid',expiry:'2027-05-10',sourceDate:'2026-04-24'});
+ const fiat={...lotus,evidence:{...report.evidence!,mot:[{date:'2025-09-13',mileage:93582,expiry:'2026-09-12',result:'pass' as const}]}};
+ const expired=projectReportPreview(fiat,'fiat','mock',{asOf:'2026-09-24'});
+ expect(expired.mot).toEqual({status:'expired',expiry:'2026-09-12',sourceDate:'2025-09-13'});
+});
+
 test('coverage identifies a later UK record for an older vehicle',()=>{
  const imported={...report,vehicle:{...report.vehicle,year:1982},detail:{...report.detail!,registered:'2022-08-01'},evidence:{...report.evidence!,mot:[...report.evidence!.mot,...report.evidence!.mot]}};
  expect(coverageForReport(imported)).toEqual({motRecordCount:2,ukRecordStart:'2022-08-01',message:'2 MOT tests returned since UK registration in 2022'});
@@ -52,4 +70,8 @@ test('status wording reflects dates and missing evidence without inventing fresh
  expect(statusCopy({status:'sorn',sourceDate:'2026-09-20'},{asOf:'2026-09-24'})).toBe('Supplier record dated 20 Sep 2026');
  expect(statusCopy({status:'exempt'},{asOf:'2026-09-24'})).toBe('Status returned without a current date');
  expect(statusCopy({status:'unavailable'},{asOf:'2026-09-24'})).toBe('Status not established');
+});
+
+test('status wording accepts full supplier timestamps',()=>{
+ expect(statusCopy({status:'expired',expiry:'2026-09-12',sourceDate:'2025-09-13T11:53:51Z'},{asOf:'2026-09-25'})).toBe('Supplier record dated 13 Sep 2025');
 });

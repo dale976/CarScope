@@ -2,7 +2,7 @@ import type {BuyingReport,MotRecord} from '../shared/report';
 import {projectReportPreview,type VehiclePreview} from '../shared/preview';
 
 const ENDPOINT='https://uk.api.vehicledataglobal.com/r2/lookup';
-const PACKAGES=['VehicleDetailsWithImage','VDICheck','ValuationDetails','TyreDetails'] as const;
+const PACKAGES=['CarScopeFree','VDICheck','ValuationDetails','TyreDetails'] as const;
 const COMPLETION_PACKAGES=['VDICheck','ValuationDetails','TyreDetails'] as const;
 type PackageName=typeof PACKAGES[number];
 type Json=Record<string,any>;
@@ -141,24 +141,24 @@ function normalise(registration:string,details:Json,vdi:Json|undefined,valuation
 
 export async function lookupSandboxReport(registrationInput:string,options:{apiKey:string;fetcher?:Fetcher}){
  const identified=await lookupSandboxPreview(registrationInput,options);
- return completeSandboxReport(identified.preview.registration,identified.details,options);
+ return completeSandboxReport(identified.preview.registration,identified.details,options,identified.previewData);
 }
 
-export async function lookupSandboxPreview(registrationInput:string,options:{apiKey:string;fetcher?:Fetcher}):Promise<{preview:Omit<VehiclePreview,'previewId'>;details:ProviderVehicleDetails}>{
+export async function lookupSandboxPreview(registrationInput:string,options:{apiKey:string;fetcher?:Fetcher}):Promise<{preview:Omit<VehiclePreview,'previewId'>;details:ProviderVehicleDetails;previewData:ProviderVehicleDetails}>{
  const registration=validateSandboxRegistration(registrationInput);const fetcher=options.fetcher??fetch;
- let details:Json;
- try {details=await requestPackage('VehicleDetailsWithImage',registration,options.apiKey,fetcher);}
+ let previewData:Json;
+ try {previewData=await requestPackage('CarScopeFree',registration,options.apiKey,fetcher);}
  catch {throw new Error('The development service could not identify the vehicle because vehicle details were unavailable.');}
- const report=normalise(registration,details,undefined,undefined,undefined,[]);
+ const report=normalise(registration,previewData,previewData,undefined,undefined,[]);
  const {previewId:_,...preview}=projectReportPreview(report,'server-only','live');
- preview.coverage={message:'Detailed history is checked in the complete report'};
- return {preview,details};
+ return {preview,details:previewData,previewData};
 }
 
-export async function completeSandboxReport(registrationInput:string,details:ProviderVehicleDetails,options:{apiKey:string;fetcher?:Fetcher}){
+export async function completeSandboxReport(registrationInput:string,details:ProviderVehicleDetails,options:{apiKey:string;fetcher?:Fetcher},previewData:ProviderVehicleDetails={}){
  const registration=validateSandboxRegistration(registrationInput);const fetcher=options.fetcher??fetch;
  const settled=await Promise.allSettled(COMPLETION_PACKAGES.map(name=>requestPackage(name,registration,options.apiKey,fetcher)));
  const results=new Map<PackageName,Json>();const missing:string[]=[];
  settled.forEach((result,index)=>result.status==='fulfilled'?results.set(COMPLETION_PACKAGES[index]!,result.value):missing.push(`${COMPLETION_PACKAGES[index]} unavailable for this report.`));
- return normalise(registration,details,results.get('VDICheck'),results.get('ValuationDetails'),results.get('TyreDetails'),missing);
+ const vdi={...previewData,...(results.get('VDICheck')??{})};
+ return normalise(registration,details,vdi,results.get('ValuationDetails'),results.get('TyreDetails'),missing);
 }

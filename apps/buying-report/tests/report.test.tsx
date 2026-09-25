@@ -95,6 +95,13 @@ test('expired and SORN states do not look like clear checks',()=>{
  expect(html).toContain('SORN');
  expect(html).not.toContain('Taxed');
 });
+test('complete report derives a missing MOT status from the latest returned test',()=>{
+ const report={...sampleReport,kind:'sandbox-example' as const,motStatus:undefined,evidence:{mot:[{date:'2026-04-24',mileage:8541,expiry:'2027-05-10',result:'pass' as const,annotations:[]}],tyres:[],notes:[]}};
+ const html=renderToStaticMarkup(<ReportView report={report}/>);
+ expect(html).toContain('MOT valid');
+ expect(html).toContain('Current through 10 May 2027');
+ expect(html).not.toContain('MOT status unavailable');
+});
 test('an old tax observation is not labelled as current in the complete report',()=>{
  const report={...sampleReport,kind:'sandbox-example' as const,tax:{status:'untaxed' as const,date:'2024-05-12',dueDate:'2024-06-01',rates:[]}};
  const html=renderToStaticMarkup(<ReportView report={report}/>);

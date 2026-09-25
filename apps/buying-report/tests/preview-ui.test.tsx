@@ -7,6 +7,8 @@ const preview:VehiclePreview={previewId:'one',registration:'LD17VAE',source:'moc
 test('focused preview shows returned evidence and the planned price without paid findings',()=>{
  const html=renderToStaticMarkup(<VehiclePreviewCard preview={preview} mode="mock" busy={false} onBack={()=>{}} onGenerate={()=>{}}/>);
  for(const text of ['Vehicle identified','LD17 VAE','MOT valid','8 MOT tests returned','Complete buying report','£9.99'])expect(html).toContain(text);
+ expect(html).toContain('class="preview-status" data-state="valid"');
+ expect(html).toContain('class="preview-status" data-state="taxed"');
  expect(html).not.toContain('Finance record');expect(html).not.toContain('Complete history');expect(html).not.toContain('supplier call');
 });
 test('preview explains later UK records and live call use',()=>{
@@ -18,4 +20,13 @@ test('preview does not turn absent MOT evidence into reassurance',()=>{
  const empty={...preview,mot:undefined,coverage:{motRecordCount:0,message:'No MOT tests returned'}};
  const html=renderToStaticMarkup(<VehiclePreviewCard preview={empty} mode="mock" busy={false} onBack={()=>{}} onGenerate={()=>{}}/>);
  expect(html).toContain('No MOT tests returned');expect(html).toContain('MOT status not established');
+ expect(html.match(/class="preview-status" data-state="unavailable"/g)).toHaveLength(1);
+});
+test('preview explains an expected empty MOT history for a young car',()=>{
+ const young={...preview,registration:'DF74FPA',vehicle:{...preview.vehicle,name:'Porsche 718 Boxster GTS 4.0 PDK',year:2024,registered:'2024-11-22'},mot:{status:'not-yet-due' as const,dueDate:'2027-11-22'},coverage:{motRecordCount:0,message:'No MOT tests expected before the first test is due'}};
+ const html=renderToStaticMarkup(<VehiclePreviewCard preview={young} mode="mock" busy={false} onBack={()=>{}} onGenerate={()=>{}}/>);
+ expect(html).toContain('First registered 22 Nov 2024');
+ expect(html).toContain('First MOT not yet due');
+ expect(html).toContain('Usually due by 22 Nov 2027');
+ expect(html).not.toContain('MOT status not established');
 });

@@ -3,11 +3,11 @@ import {VehicleFacts,VehiclePortrait} from './VehicleStory';
 import type {BuyingReport} from '../shared/report';
 import type {ReactNode} from 'react';
 import {dateLabel,reportAnchor} from '../shared/history';
-import {statusCopy} from '../shared/preview';
+import {resolvedMotStatus,statusCopy,type VehiclePreview} from '../shared/preview';
 const money=(n:number)=>new Intl.NumberFormat('en-GB',{style:'currency',currency:'GBP',maximumFractionDigits:0}).format(n);
 const duration=(minutes:number)=>{const hours=Math.floor(minutes/60),remaining=minutes%60;return [hours?`${hours} hr`:null,remaining?`${remaining} min`:null].filter(Boolean).join(' ')||'0 min';};
 const registrationLabel=(value:string)=>{const clean=value.toUpperCase().replace(/\s/g,'');return clean.length===7?`${clean.slice(0,4)} ${clean.slice(4)}`:clean;};
-const motStatusLabel=(status:NonNullable<BuyingReport['motStatus']>['status'])=>({valid:'MOT valid',expired:'MOT expired',failed:'Latest MOT failed',exempt:'MOT exempt',unavailable:'MOT status unavailable'}[status]);
+const motStatusLabel=(status:NonNullable<VehiclePreview['mot']>['status'])=>({valid:'MOT valid',expired:'MOT expired',failed:'Latest MOT failed',exempt:'MOT exempt',unavailable:'MOT status unavailable','not-yet-due':'First MOT not yet due'}[status]);
 const taxStatusLabel=(status:NonNullable<BuyingReport['tax']>['status'])=>status?({taxed:'Taxed',untaxed:'Untaxed',sorn:'SORN',exempt:'Tax exempt',unavailable:'Tax status unavailable'}[status]):'Tax status unavailable';
 function EvSection({ev}:{ev:NonNullable<BuyingReport['ev']>}){
  const milesPerKwh=ev.consumptionWhMile?1000/ev.consumptionWhMile:undefined;
@@ -33,12 +33,12 @@ function RecordOverview({report}:{report:BuyingReport}){
  const suppliedRecords=motRecords+keeperRecords+(report.historyEvents?.length??0)+(report.financeRecords?.length??0);
  const returnedLabel=`${returned} check${returned===1?'':'s'} returned ${returned===1?'a record':'records'}`;
  const attention=[...(report.historyEvents??[]).filter(event=>event.significant).map(event=>({label:event.title,detail:'A significant dated event appears in the supplied history.',href:`#history-event-${reportAnchor(event.title)}`})),...report.checks.filter(check=>check.status==='record-returned').map(check=>({label:check.name==='Finance'?'Finance record returned':`${check.name} · Record returned`,detail:check.name==='Finance'?[finance?.agreementType,finance?.company].filter(Boolean).join(' · ')||'Confirm its current status and obtain evidence of settlement before purchase.':'Review the returned record and verify its current status before purchase.',href:`#history-check-${reportAnchor(check.name)}`}))];
- const latestMotDate=[...(report.evidence?.mot??[])].sort((a,b)=>b.date.localeCompare(a.date))[0]?.date;
- const motFreshness=report.motStatus?statusCopy({status:report.motStatus.status,expiry:report.motStatus.expiry,sourceDate:latestMotDate}):'Status not established';
+ const motStatus=resolvedMotStatus(report);
+ const motFreshness=motStatus?statusCopy(motStatus):'Status not established';
  const taxFreshness=report.tax?statusCopy({status:report.tax.status??'unavailable',dueDate:report.tax.dueDate,sourceDate:report.tax.date}):'Status not established';
  return <section className="record-overview" aria-labelledby="record-overview-title">
   <div className="overview-heading"><div><p className="eyebrow">At a glance</p><h2 id="record-overview-title">Record overview</h2></div><p>This is not a vehicle rating or buying recommendation. It summarises the records returned and the checks still outstanding.</p></div>
-  <div className="current-status-grid"><div data-state={report.motStatus?.status??'unavailable'}><span>MOT status</span><strong>{report.motStatus?motStatusLabel(report.motStatus.status):'Unavailable'}</strong><small>{motFreshness}</small></div><div data-state={report.tax?.status??'unavailable'}><span>Tax status</span><strong>{taxStatusLabel(report.tax?.status)}</strong><small>{taxFreshness}</small></div></div>
+  <div className="current-status-grid"><div data-state={motStatus?.status??'unavailable'}><span>MOT status</span><strong>{motStatus?motStatusLabel(motStatus.status):'Unavailable'}</strong><small>{motFreshness}</small></div><div data-state={report.tax?.status??'unavailable'}><span>Tax status</span><strong>{taxStatusLabel(report.tax?.status)}</strong><small>{taxFreshness}</small></div></div>
   <div className="overview-stats"><div data-tone="neutral" aria-label={`${suppliedRecords} ${suppliedRecords===1?'record supplied':'records supplied'}`}><strong>{suppliedRecords}</strong><span>{suppliedRecords===1?'record supplied':'records supplied'}</span></div><div data-tone={returned?'attention':'neutral'} aria-label={returnedLabel}><strong>{returned}</strong><span>{returnedLabel.replace(/^\d+ /,'')}</span></div><div data-tone={incomplete?'pending':'neutral'} aria-label={`${incomplete} ${incomplete===1?'check not completed':'checks not completed'}`}><strong>{incomplete}</strong><span>{incomplete===1?'check not completed':'checks not completed'}</span></div></div>
   {attention.length>0&&<div className="overview-records"><h3>Records requiring attention</h3><ul>{attention.map(item=><li key={item.href}><a href={item.href}><strong>{item.label}</strong><span>{item.detail}</span><small>View record ↓</small></a></li>)}</ul></div>}
   <div className="overview-guidance"><div><h3>Why this matters</h3><p>{significant||returned?'The supplied records contain items that deserve a closer look before relying on the vehicle’s history.':'No headline event was identified in the supplied records, but that is not the same as a current all-clear.'}</p></div><div><h3>What to do next</h3><p>{incomplete?'Complete the outstanding checks and verify any returned records with current documents or an independent inspection.':'Verify the returned information against current documents and the vehicle itself before purchase.'}</p></div></div>

@@ -4,7 +4,7 @@ import type {DataMode} from '../shared/preview';
 import type {ProviderVehicleDetails} from './provider';
 
 type MockSession={mode:'mock';registration:string;report:BuyingReport};
-type LiveSession={mode:'live';registration:string;details:ProviderVehicleDetails};
+type LiveSession={mode:'live';registration:string;details:ProviderVehicleDetails;previewData:ProviderVehicleDetails};
 type PreviewSession=(MockSession|LiveSession)&{createdAt:number;inflight?:Promise<BuyingReport>};
 type NewSession=MockSession|LiveSession;
 
