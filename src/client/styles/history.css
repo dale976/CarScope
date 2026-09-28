@@ -1,0 +1,266 @@
+/* Long histories remain a compact overview with the original evidence within reach. */
+.history-section {
+  min-width: 0;
+}
+.history-alert {
+  border-left: 4px solid #a3452d;
+  padding: 18px 22px;
+  background: #f4e9df;
+  margin: 22px 0;
+}
+.history-alert h3 {
+  margin: 8px 0;
+}
+.mileage-panel {
+  background: #f2f3ed;
+  border: 1px solid #d9ded3;
+  padding: 22px;
+  margin: 26px 0;
+  border-radius: 8px;
+}
+.chart-heading {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+}
+.chart-heading h3 {
+  margin: 0;
+}
+.chart-range {
+  display: flex;
+  gap: 5px;
+}
+.chart-range button {
+  border: 1px solid #bac6bc;
+  background: transparent;
+  color: #27473b;
+  padding: 9px 12px;
+  border-radius: 5px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+}
+.chart-range button[aria-pressed="true"] {
+  background: #27473b;
+  color: white;
+}
+.mileage-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 14px 0;
+  overflow: visible;
+  color: #426b56;
+}
+.mileage-chart text {
+  font: 12px sans-serif;
+  fill: #4d6053;
+}
+.mileage-chart circle {
+  stroke: #fff;
+  stroke-width: 2px;
+  cursor: pointer;
+}
+.passed-point {
+  fill: #416e55;
+}
+.failed-point {
+  fill: #a3452d;
+}
+.mileage-panel label {
+  display: block;
+  font-size: 13px;
+  margin: 8px 0;
+}
+.mileage-panel select {
+  width: 100%;
+  min-height: 44px;
+  padding: 10px;
+  background: #fffdf7;
+  color: #243e32;
+  border: 1px solid #bac6bc;
+  border-radius: 4px;
+  font: inherit;
+  font-size: 13px;
+}
+.selected-test {
+  padding-top: 18px;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+.history-year {
+  border-top: 1px solid #d2d9cd;
+}
+.history-year > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 18px;
+  padding: 20px 2px;
+  cursor: pointer;
+  list-style: none;
+}
+.history-year > summary::after {
+  content: "+";
+  margin-left: auto;
+}
+.history-year[open] > summary::after {
+  content: "−";
+}
+.history-year summary strong {
+  font-size: 24px;
+  font-family: Georgia, serif;
+}
+.history-year summary span {
+  font-size: 12px;
+  color: #546256;
+}
+.history-year .history-timeline {
+  margin: 10px 0 24px;
+}
+.history-failure h3 {
+  color: #943c29;
+}
+.tax-card {
+  padding: 26px;
+  margin: 24px 0;
+  border: 1px solid #d2d9cd;
+  border-radius: 8px;
+}
+.empty-data {
+  color: #586357;
+  line-height: 1.7;
+}
+.tyre-row {
+  padding: 14px 0;
+  border-bottom: 1px solid #d2d9cd;
+}
+.tyre-row div {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+}
+.tyre-row strong {
+  text-align: right;
+}
+.tyre-row small {
+  display: block;
+  margin-top: 6px;
+  color: #586357;
+}
+.ev-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1px;
+  background: #ccd4ca;
+  margin: 22px 0;
+  border: 1px solid #ccd4ca;
+}
+.ev-metrics div {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 18px;
+  background: #f7f6ef;
+}
+.ev-metrics strong {
+  font-family: Georgia, serif;
+  font-size: 20px;
+}
+.ev-metrics span {
+  color: #586357;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.charge-port {
+  padding: 20px 0;
+  border-top: 1px solid #d2d9cd;
+}
+.charge-port h3,
+.charge-port p {
+  margin: 0 0 5px;
+}
+.charge-port dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 15px 0;
+}
+.charge-port dl div {
+  background: #f2f3ed;
+  padding: 10px;
+}
+.charge-port dt {
+  font-size: 11px;
+  color: #586357;
+}
+.charge-port dd {
+  margin: 5px 0 0;
+  font-weight: 700;
+}
+.battery-caution {
+  border-left: 4px solid #b47739;
+  background: #f4eee4;
+  padding: 18px 20px;
+  margin-top: 18px;
+}
+.battery-caution p {
+  margin: 8px 0 0;
+  line-height: 1.65;
+}
+@media (max-width: 700px) {
+  .ev-metrics {
+    grid-template-columns: 1fr;
+  }
+  .charge-port dl {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.history-section button:focus-visible,
+.history-section select:focus-visible,
+.history-year summary:focus-visible {
+  outline: 3px solid #b47739;
+  outline-offset: 4px;
+}
+@media (max-width: 700px) {
+  .mileage-panel {
+    padding: 14px;
+  }
+  .history-year > summary {
+    gap: 12px;
+  }
+  .history-year summary span {
+    max-width: 65%;
+  }
+  .chart-range button {
+    padding: 10px;
+  }
+  .tax-card {
+    padding: 20px;
+  }
+}
+.test-findings {
+  padding: 8px 0 12px;
+  font-size: 14px;
+}
+.test-findings summary {
+  cursor: pointer;
+  color: #354f40;
+  line-height: 1.6;
+}
+.test-findings ul {
+  padding-left: 20px;
+}
+.test-findings li {
+  padding: 7px 0;
+  line-height: 1.7;
+}
+.test-findings li strong {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.test-findings li:before {
+  content: none;
+}

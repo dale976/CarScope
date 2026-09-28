@@ -1,7 +1,11 @@
 import { createRoot } from 'react-dom/client';
 import { App } from './App';
 import type { ClientRuntimeConfig } from '../shared/preview';
-import './styles.css';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/journey.css';
+import './styles/report.css';
+import './styles/history.css';
 
 async function runtimeConfig(): Promise<ClientRuntimeConfig> {
   try {
