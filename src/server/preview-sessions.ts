@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto';
 import type { BuyingReport } from '../shared/report';
 import type { DataMode } from '../shared/preview';
-import type { ProviderVehicleDetails } from './provider';
 import { AppError } from './errors';
+import type { ProviderVehicleDetails } from './provider';
 
 type MockSession = { mode: 'mock'; registration: string; report: BuyingReport };
 type LiveSession = {
@@ -11,16 +11,29 @@ type LiveSession = {
   details: ProviderVehicleDetails;
   previewData: ProviderVehicleDetails;
 };
-type PreviewSession = (MockSession | LiveSession) & {
+export type NewPreviewSession = MockSession | LiveSession;
+export type PreviewSession = NewPreviewSession & {
   createdAt: number;
   inflight?: Promise<BuyingReport>;
 };
-type NewSession = MockSession | LiveSession;
 
-export function createPreviewSessions(options: { now?: () => number; ttlMs?: number } = {}) {
+export interface PreviewSessionStore {
+  create(session: NewPreviewSession): Promise<string>;
+  complete(
+    id: string,
+    mode: DataMode,
+    registration: string,
+    work: (session: PreviewSession) => Promise<BuyingReport>,
+  ): Promise<BuyingReport>;
+}
+
+export function createMemoryPreviewSessionStore(
+  options: { now?: () => number; ttlMs?: number } = {},
+): PreviewSessionStore {
   const now = options.now ?? Date.now;
   const ttlMs = options.ttlMs ?? 1_800_000;
   const sessions = new Map<string, PreviewSession>();
+
   const read = (id: string, mode: DataMode, registration: string) => {
     const session = sessions.get(id);
     if (!session)
@@ -41,19 +54,14 @@ export function createPreviewSessions(options: { now?: () => number; ttlMs?: num
       );
     return session;
   };
+
   return {
-    create(session: NewSession) {
+    async create(session) {
       const id = randomUUID();
       sessions.set(id, { ...session, createdAt: now() });
       return id;
     },
-    read,
-    complete(
-      id: string,
-      mode: DataMode,
-      registration: string,
-      work: (session: PreviewSession) => Promise<BuyingReport>,
-    ) {
+    async complete(id, mode, registration, work) {
       const session = read(id, mode, registration);
       if (session.inflight) return session.inflight;
       const pending = work(session).then(
@@ -71,5 +79,3 @@ export function createPreviewSessions(options: { now?: () => number; ttlMs?: num
     },
   };
 }
-
-export type PreviewSessions = ReturnType<typeof createPreviewSessions>;

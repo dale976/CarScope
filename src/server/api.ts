@@ -12,7 +12,7 @@ import {
   lookupSandboxPreview,
   type ProviderVehicleDetails,
 } from './provider';
-import { createPreviewSessions, type PreviewSessions } from './preview-sessions';
+import { createMemoryPreviewSessionStore, type PreviewSessionStore } from './preview-sessions';
 
 type IdentifiedLive = {
   preview: Omit<VehiclePreview, 'previewId'>;
@@ -22,7 +22,7 @@ type IdentifiedLive = {
 type Options = {
   config?: ServerConfig;
   logger?: Logger;
-  sessions?: PreviewSessions;
+  sessions?: PreviewSessionStore;
   loadMock?: (registration: string) => BuyingReport;
   completeMock?: (report: BuyingReport) => Promise<BuyingReport>;
   identifyLive?: (registration: string, options: { apiKey: string }) => Promise<IdentifiedLive>;
@@ -60,7 +60,7 @@ async function body(request: Request) {
 export function createReportApi(options: Options = {}) {
   const config = options.config ?? readConfig();
   const logger = options.logger ?? quietLogger;
-  const sessions = options.sessions ?? createPreviewSessions();
+  const sessions = options.sessions ?? createMemoryPreviewSessionStore();
   const loadMock = options.loadMock ?? ((value: string) => loadMockReport(value, config.root));
   const completeMock = options.completeMock ?? (async (report) => report);
   const identifyLive = options.identifyLive ?? lookupSandboxPreview;
@@ -98,13 +98,13 @@ export function createReportApi(options: Options = {}) {
       if (path === '/api/report-preview') {
         if (mode === 'mock') {
           const report = loadMock(reg);
-          const previewId = sessions.create({ mode, registration: reg, report });
+          const previewId = await sessions.create({ mode, registration: reg, report });
           return json(projectReportPreview(report, previewId, mode));
         }
         if (!config.sandbox.enabled || !config.sandbox.apiKey)
           throw new AppError('LIVE_UNAVAILABLE', 503, 'Live sandbox lookup is not configured.');
         const identified = await identifyLive(reg, { apiKey: config.sandbox.apiKey });
-        const previewId = sessions.create({
+        const previewId = await sessions.create({
           mode,
           registration: reg,
           details: identified.details,
