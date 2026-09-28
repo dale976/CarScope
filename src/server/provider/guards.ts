@@ -38,7 +38,18 @@ export function readRecord(
 }
 
 export function readDate(value: unknown): string | undefined {
-  return typeof value === 'string' && /^\d{4}-\d{2}-\d{2}/.test(value)
-    ? value.slice(0, 10)
-    : undefined;
+  if (typeof value !== 'string') return undefined;
+  const match = value.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!match) return undefined;
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+  const day = Number(match[3]);
+  const date = new Date(Date.UTC(year, month - 1, day));
+  if (
+    date.getUTCFullYear() !== year ||
+    date.getUTCMonth() !== month - 1 ||
+    date.getUTCDate() !== day
+  )
+    return undefined;
+  return value.slice(0, 10);
 }

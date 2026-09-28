@@ -6,6 +6,7 @@ import {
   validateSandboxRegistration,
   type Fetcher,
 } from '../src/server/provider';
+import { buildReport } from '../src/server/provider/build-report';
 
 const details = {
   Results: {
@@ -457,6 +458,18 @@ test('vehicle details are required to identify the car', async () => {
   );
 });
 
+test('failed vehicle identification remains a typed supplier failure', async () => {
+  const fetcher: Fetcher = async () => new Response('private upstream detail', { status: 503 });
+  try {
+    await lookupSandboxPreview('SL60AUC', { apiKey: 'secret', fetcher });
+    throw new Error('Expected lookupSandboxPreview to reject');
+  } catch (error) {
+    expect((error as { code?: string }).code).toBe('VEHICLE_UNAVAILABLE');
+    expect((error as { status?: number }).status).toBe(502);
+    expect(String(error)).not.toContain('private upstream detail');
+  }
+});
+
 test('malformed tyre entries are ignored instead of crashing the report', async () => {
   const fetcher: Fetcher = async (input) => {
     const packageName = new URL(String(input)).searchParams.get('packagename');
@@ -481,4 +494,45 @@ test('a make without a model is not enough to identify a vehicle', async () => {
   await expect(lookupSandboxPreview('SL60AUC', { apiKey: 'secret', fetcher })).rejects.toThrow(
     'identify the vehicle',
   );
+});
+
+test('malformed optional supplier sections degrade without crashing or inventing values', () => {
+  const report = buildReport(
+    'SL60AUC',
+    {
+      VehicleDetails: {
+        VehicleIdentification: {
+          DvlaMake: 'FIAT',
+          DvlaModel: '500',
+          YearOfManufacture: 'not-a-number',
+        },
+        VehicleHistory: null,
+        DvlaTechnicalDetails: 'invalid',
+      },
+      ModelDetails: {
+        ModelIdentification: { Make: 'Fiat', Model: '500' },
+        Powertrain: null,
+        Performance: [],
+        Dimensions: { LengthMm: 'long', WidthMm: 1600, HeightMm: 1400 },
+      },
+      VehicleImageDetails: { VehicleImageList: [null, 'invalid', { ImageUrl: 42 }] },
+    },
+    {
+      MotHistoryDetails: { MotTestDetailsList: [null, 'invalid', { TestDate: 42 }] },
+      FinanceDetails: { FinanceRecordList: [null, 'invalid', { AgreementTerm: 'sixty' }] },
+      MiaftrDetails: { WriteOffRecordList: [false] },
+      PncDetails: null,
+      VehicleTaxDetails: { VehicleExciseDutyDetails: null },
+    },
+    { ValuationDetails: { ValuationMileage: 'unknown', ValuationFigures: [] } },
+    { TyreDetails: { TyreDetailsList: [null, { Front: null }] } },
+    [],
+    true,
+  );
+  expect(report.vehicle).toMatchObject({ name: 'Fiat 500', year: 0, mileage: null });
+  expect(report.detail?.dimensions).toBeUndefined();
+  expect(report.financeRecords).toEqual([]);
+  expect(report.evidence?.mot).toEqual([]);
+  expect(report.evidence?.valuation).toBeUndefined();
+  expect(report.evidence?.tyres).toEqual([]);
 });

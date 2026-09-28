@@ -1,6 +1,7 @@
 import { projectReportPreview, type VehiclePreview } from '../shared/preview';
 import { requestPackage } from './provider/client';
 import { buildReport } from './provider/build-report';
+import { AppError } from './errors';
 import {
   COMPLETION_PACKAGE_NAMES,
   type Fetcher,
@@ -46,9 +47,12 @@ export async function lookupSandboxPreview(
   let previewData: ProviderVehicleDetails;
   try {
     previewData = await requestPackage('CarScopeFree', registration, options.apiKey, fetcher);
-  } catch {
-    throw new Error(
+  } catch (error) {
+    throw new AppError(
+      'VEHICLE_UNAVAILABLE',
+      502,
       'The development service could not identify the vehicle because vehicle details were unavailable.',
+      { cause: error },
     );
   }
   const report = buildReport(
