@@ -1,9 +1,10 @@
-import { ROOT } from '../../../scripts/workspace';
+import { fileURLToPath } from 'node:url';
 import { sampleReport } from '../fixtures/sample-report';
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 const port = 49000 + Math.floor(Math.random() * 10000);
+const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const base = new URL(`http://127.0.0.1:${port}`);
 const fixtureRoot = mkdtempSync(join(tmpdir(), 'carscope-smoke-'));
 mkdirSync(join(fixtureRoot, '.local'));
@@ -17,7 +18,7 @@ writeFileSync(
   }),
 );
 const child = Bun.spawn([process.execPath, 'index.js'], {
-  cwd: resolve(ROOT, 'apps/buying-report/dist'),
+  cwd: resolve(ROOT, 'dist'),
   env: {
     ...process.env,
     CARSCOPE_ROOT: fixtureRoot,

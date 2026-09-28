@@ -5,7 +5,7 @@ dist/
 !.env.example
 .cache/
 .DS_Store
-.tools/
+.tools
 .worktrees/
 
 # Persistent local spend accounting (not provider data)

@@ -1,6 +1,5 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { exampleForRegistration } from '../shared/journey';
 import type { BuyingReport } from '../shared/report';
 
@@ -21,7 +20,7 @@ function isBuyingReport(value: unknown): value is BuyingReport {
 
 export function loadMockReport(
   registration: string,
-  root = process.env.CARSCOPE_ROOT ?? fileURLToPath(new URL('../../../../', import.meta.url)),
+  root = process.env.CARSCOPE_ROOT ?? process.cwd(),
 ): BuyingReport {
   const example = exampleForRegistration(registration);
   if (!example) throw new Error('Mock vehicle unavailable. Choose one of the example vehicles.');

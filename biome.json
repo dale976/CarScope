@@ -2,7 +2,10 @@
   "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   "files": {
     "includes": [
-      "apps/buying-report/**",
+      "src/**",
+      "tests/**",
+      "fixtures/**",
+      "scripts/**",
       "!**/dist/**",
       "!**/node_modules/**",
       "!**/.cache/**",
