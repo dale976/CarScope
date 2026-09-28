@@ -13,9 +13,12 @@ export type { Fetcher, ProviderVehicleDetails } from './provider/types';
 
 export function validateSandboxRegistration(value: string) {
   const registration = value.toUpperCase().replace(/\s/g, '');
-  if (!/^[A-Z0-9]{2,8}$/.test(registration)) throw new Error('Enter a valid UK registration.');
+  if (!/^[A-Z0-9]{2,8}$/.test(registration))
+    throw new AppError('INVALID_REGISTRATION', 422, 'Enter a valid UK registration.');
   if (!registration.includes('A'))
-    throw new Error(
+    throw new AppError(
+      'SANDBOX_REGISTRATION_RESTRICTED',
+      422,
       'The development service can only search registrations containing the letter A.',
     );
   return registration;

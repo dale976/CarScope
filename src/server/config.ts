@@ -15,8 +15,10 @@ export type ServerConfig = {
 const loopbackHosts = new Set(['127.0.0.1', 'localhost', '::1', '[::1]']);
 
 function environment(value: string | undefined): ServerConfig['environment'] {
+  if (value === undefined || value === '') return 'development';
   if (value === 'production' || value === 'test') return value;
-  return 'development';
+  if (value === 'development') return value;
+  throw new Error('NODE_ENV must be development, test or production.');
 }
 
 function port(value: string | undefined) {

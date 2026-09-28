@@ -7,6 +7,7 @@ type FinanceRecords = NonNullable<BuyingReport['financeRecords']>;
 export type NormalisedProvenance = {
   financeRecords: FinanceRecords;
   writeOffEvents: HistoryEvent[];
+  writeOffRecordReturned: boolean;
   stolen: boolean;
 };
 
@@ -39,6 +40,7 @@ export function normaliseProvenance(vdi: SupplierRecord | undefined): Normalised
         },
       ];
     }),
+    writeOffRecordReturned: writeOffs.length > 0,
     stolen: boolean(child(vdi, 'PncDetails'), 'IsStolen') === true,
   };
 }

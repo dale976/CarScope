@@ -90,6 +90,20 @@ test('API maps malformed requests to stable typed errors', async () => {
   expect((await invalidRegistration.json()).code).toBe('INVALID_REGISTRATION');
 });
 
+test('live sandbox restrictions return a correctable validation error', async () => {
+  const api = createReportApi({
+    config: readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' }),
+  });
+  const response = await api(
+    post('/api/report-preview', { mode: 'live', registration: 'DF74FPX' }),
+  );
+  expect(response.status).toBe(422);
+  expect(await response.json()).toEqual({
+    error: 'The development service can only search registrations containing the letter A.',
+    code: 'SANDBOX_REGISTRATION_RESTRICTED',
+  });
+});
+
 test('unexpected API failures return a generic response', async () => {
   const api = createReportApi({
     config: readConfig({}),

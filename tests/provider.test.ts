@@ -260,6 +260,50 @@ test('lookup requests four packages and normalises standard tyre fitment into on
   ]);
 });
 
+test('numeric MOT readings remain usable mileage evidence', () => {
+  const report = buildReport(
+    'SL60AUC',
+    details.Results,
+    {
+      ...vdi.Results,
+      MotHistoryDetails: {
+        MotTestDetailsList: [
+          {
+            ...vdi.Results.MotHistoryDetails.MotTestDetailsList[0],
+            OdometerReading: 42000,
+          },
+        ],
+      },
+    },
+    undefined,
+    undefined,
+    [],
+    true,
+  );
+  expect(report.evidence?.mot[0]?.mileage).toBe(42000);
+  expect(report.vehicle.mileage).toBe(42000);
+});
+
+test('an undated write-off remains a returned provenance record', () => {
+  const report = buildReport(
+    'SL60AUC',
+    details.Results,
+    {
+      ...vdi.Results,
+      MiaftrDetails: { WriteOffRecordList: [{ Category: 'S', Status: 'Recorded' }] },
+    },
+    undefined,
+    undefined,
+    [],
+    true,
+  );
+  expect(report.checks.find((check) => check.name === 'Insurance write-off')?.status).toBe(
+    'record-returned',
+  );
+  expect(report.findings[0]?.label).toContain('write-off');
+  expect(report.historyEvents).toEqual([]);
+});
+
 test('preview requests CarScopeFree once and completion requests only three remaining packages', async () => {
   const calls: string[] = [];
   const fetcher: Fetcher = async (input) => {

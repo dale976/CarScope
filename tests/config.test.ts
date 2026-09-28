@@ -10,6 +10,11 @@ test('PORT is canonical with REPORT_PORT as a backwards-compatible fallback', ()
   }
 });
 
+test('unsupported explicit environments fail closed', () => {
+  expect(() => readConfig({ NODE_ENV: 'prod', HOST: '0.0.0.0' })).toThrow('NODE_ENV');
+  expect(readConfig({}).environment).toBe('development');
+});
+
 test('sandbox configuration requires a server-side key', () => {
   expect(() => readConfig({ VDG_SANDBOX_ENABLED: 'true' })).toThrow('VDG_API_KEY');
   expect(readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'secret' }).sandbox).toEqual({

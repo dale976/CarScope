@@ -29,7 +29,7 @@ export function buildReport(
       .map((annotation) => ({ ...annotation, date: item.date })),
   );
   const financeReturned = provenance.financeRecords.length > 0;
-  const writeOffReturned = provenance.writeOffEvents.length > 0;
+  const writeOffReturned = provenance.writeOffRecordReturned;
   const evidenceNotes = [...missing];
   if (tyreDetails && tyres.length === 0)
     evidenceNotes.push('TyreDetails returned no usable fitment for this report.');

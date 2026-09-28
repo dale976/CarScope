@@ -55,7 +55,16 @@ try {
     }
   }
   if (!ready) throw new Error('Report production server did not start.');
-  const html = await (await check('/report')).text();
+  const documentResponse = await check('/report');
+  for (const header of [
+    'content-security-policy',
+    'x-content-type-options',
+    'referrer-policy',
+    'permissions-policy',
+  ]) {
+    if (!documentResponse.headers.has(header)) throw new Error(`Document missing ${header}`);
+  }
+  const html = await documentResponse.text();
   const assets = [...html.matchAll(/(?:src|href)="([^"]+\.(?:js|css))"/g)].map((m) => m[1]!);
   if (assets.length < 2) throw new Error('Built assets missing');
   for (const asset of assets) {
