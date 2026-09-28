@@ -20,4 +20,9 @@ describe('buying report entry page', () => {
     expect(html).not.toContain('30 registrations');
     expect(html).not.toContain('Sandbox prototype');
   });
+  test('production runtime hides the development data-source selector', () => {
+    const html = renderToStaticMarkup(<App runtimeConfig={{ sandboxControls: false }} />);
+    expect(html).not.toContain('aria-label="Data source"');
+    expect(html).not.toContain('>Live</button>');
+  });
 });

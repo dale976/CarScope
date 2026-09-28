@@ -1,6 +1,7 @@
 import type { BuyingReport } from './report';
 
 export type DataMode = 'mock' | 'live';
+export type ClientRuntimeConfig = { sandboxControls: boolean };
 export type VehiclePreview = {
   previewId: string;
   registration: string;

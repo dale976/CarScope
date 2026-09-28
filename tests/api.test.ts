@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createReportApi } from '../src/server/api';
-import { readReportConfig } from '../src/server/config';
+import { readConfig } from '../src/server/config';
 import type { BuyingReport } from '../src/shared/report';
 import type { ProviderVehicleDetails } from '../src/server/provider';
 
@@ -44,14 +44,16 @@ test('API returns the fictional example and rejects other requests', async () =>
   ).toBe(405);
   expect((await api(new Request('http://localhost/api/unknown'))).status).toBe(404);
 });
-test('report config is independent from search port and provider keys', () => {
-  expect(readReportConfig({ PORT: '4321' })).toEqual({ host: '127.0.0.1', port: 9000 });
-  expect(readReportConfig({ REPORT_PORT: '4322' }).port).toBe(4322);
-  for (const value of ['abc', '0', '65536', '3.5'])
-    expect(() => readReportConfig({ REPORT_PORT: value })).toThrow();
+test('runtime config endpoint exposes only client-safe controls', async () => {
+  const api = createReportApi({ config: readConfig({ VDG_API_KEY: 'must-not-leak' }) });
+  const response = await api(new Request('http://127.0.0.1/api/runtime-config'));
+  const text = await response.text();
+  expect(response.status).toBe(200);
+  expect(JSON.parse(text)).toEqual({ sandboxControls: true });
+  expect(text).not.toContain('must-not-leak');
 });
 test('spending endpoints require POST, JSON and same origin', async () => {
-  const api = createReportApi({ env: {} });
+  const api = createReportApi({ config: readConfig({}) });
   expect((await api(new Request('http://127.0.0.1/api/report-preview'))).status).toBe(405);
   expect(
     (
@@ -95,7 +97,7 @@ test('live preview invokes identification once and generation invokes completion
   let identifyCalls = 0,
     completeCalls = 0;
   const api = createReportApi({
-    env: { VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' },
+    config: readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' }),
     identifyLive: async (registration) => {
       identifyCalls++;
       return {

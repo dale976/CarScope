@@ -8,6 +8,7 @@ import {
   type ProviderVehicleDetails,
 } from './provider';
 import { createPreviewSessions, type PreviewSessions } from './preview-sessions';
+import { isAllowedOrigin, readConfig, type ServerConfig } from './config';
 
 type IdentifiedLive = {
   preview: Omit<VehiclePreview, 'previewId'>;
@@ -15,7 +16,7 @@ type IdentifiedLive = {
   previewData: ProviderVehicleDetails;
 };
 type Options = {
-  env?: Record<string, string | undefined>;
+  config?: ServerConfig;
   sessions?: PreviewSessions;
   loadMock?: (registration: string) => BuyingReport;
   completeMock?: (report: BuyingReport) => Promise<BuyingReport>;
@@ -54,27 +55,23 @@ async function body(request: Request) {
     throw Object.assign(new Error('Invalid JSON body.'), { status: 400 });
   }
 }
-function allowedRequest(request: Request) {
-  const url = new URL(request.url);
-  if (!['127.0.0.1', 'localhost', '::1', '[::1]'].includes(url.hostname)) return false;
-  const origin = request.headers.get('origin');
-  if (!origin) return true;
-  try {
-    return new URL(origin).origin === url.origin;
-  } catch {
-    return false;
-  }
-}
-
 export function createReportApi(options: Options = {}) {
-  const env = options.env ?? process.env;
+  const config = options.config ?? readConfig();
   const sessions = options.sessions ?? createPreviewSessions();
-  const loadMock = options.loadMock ?? loadMockReport;
+  const loadMock = options.loadMock ?? ((value: string) => loadMockReport(value, config.root));
   const completeMock = options.completeMock ?? (async (report) => report);
   const identifyLive = options.identifyLive ?? lookupSandboxPreview;
   const completeLive = options.completeLive ?? completeSandboxReport;
   return async (request: Request): Promise<Response> => {
     const path = new URL(request.url).pathname;
+    if (path === '/api/runtime-config') {
+      if (request.method !== 'GET')
+        return new Response('Method not allowed', {
+          status: 405,
+          headers: { Allow: 'GET', ...noStore },
+        });
+      return json(config.client);
+    }
     if (path === '/api/sample-report') {
       if (request.method !== 'GET')
         return new Response('Method not allowed', {
@@ -90,7 +87,7 @@ export function createReportApi(options: Options = {}) {
         status: 405,
         headers: { Allow: 'POST', ...noStore },
       });
-    if (!allowedRequest(request))
+    if (!isAllowedOrigin(request, config))
       return json({ error: 'Request origin is not allowed.' }, { status: 403 });
     try {
       const input = await body(request);
@@ -103,9 +100,9 @@ export function createReportApi(options: Options = {}) {
           const previewId = sessions.create({ mode, registration: reg, report });
           return json(projectReportPreview(report, previewId, mode));
         }
-        if (env.VDG_SANDBOX_ENABLED !== 'true' || !env.VDG_API_KEY)
+        if (!config.sandbox.enabled || !config.sandbox.apiKey)
           throw new Error('Live sandbox lookup is not configured.');
-        const identified = await identifyLive(reg, { apiKey: env.VDG_API_KEY });
+        const identified = await identifyLive(reg, { apiKey: config.sandbox.apiKey });
         const previewId = sessions.create({
           mode,
           registration: reg,
@@ -119,8 +116,13 @@ export function createReportApi(options: Options = {}) {
         throw new Error('Preview expired or unavailable. Identify the vehicle again.');
       const report = await sessions.complete(previewId, mode, reg, async (session) => {
         if (session.mode === 'mock') return completeMock(session.report);
-        if (!env.VDG_API_KEY) throw new Error('Live sandbox lookup is not configured.');
-        return completeLive(reg, session.details, { apiKey: env.VDG_API_KEY }, session.previewData);
+        if (!config.sandbox.apiKey) throw new Error('Live sandbox lookup is not configured.');
+        return completeLive(
+          reg,
+          session.details,
+          { apiKey: config.sandbox.apiKey },
+          session.previewData,
+        );
       });
       return json(report);
     } catch (error) {

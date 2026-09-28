@@ -3,7 +3,7 @@ import { RegistrationStep } from './journey/RegistrationStep';
 import { PreviewStep } from './journey/PreviewStep';
 import { ReportStep } from './journey/ReportStep';
 import type { BuyingReport } from '../shared/report';
-import type { DataMode, VehiclePreview } from '../shared/preview';
+import type { ClientRuntimeConfig, DataMode, VehiclePreview } from '../shared/preview';
 
 type Stage = 'registration' | 'identifying' | 'preview' | 'generating' | 'report';
 const examples = [
@@ -26,7 +26,11 @@ async function post<T>(path: string, value: unknown): Promise<T> {
   return result as T;
 }
 
-export function App() {
+export function App({
+  runtimeConfig = { sandboxControls: true },
+}: {
+  runtimeConfig?: ClientRuntimeConfig;
+}) {
   const [stage, setStage] = useState<Stage>('registration');
   const [mode, setMode] = useState<DataMode>('mock');
   const [registration, setRegistration] = useState('');
@@ -110,14 +114,16 @@ export function App() {
           </span>
         </a>
         <span className="product-name">Vehicle buying reports</span>
-        <div className="mode-toggle" role="group" aria-label="Data source">
-          <button type="button" aria-pressed={mode === 'mock'} onClick={() => chooseMode('mock')}>
-            Mock
-          </button>
-          <button type="button" aria-pressed={mode === 'live'} onClick={() => chooseMode('live')}>
-            Live
-          </button>
-        </div>
+        {runtimeConfig.sandboxControls && (
+          <div className="mode-toggle" role="group" aria-label="Data source">
+            <button type="button" aria-pressed={mode === 'mock'} onClick={() => chooseMode('mock')}>
+              Mock
+            </button>
+            <button type="button" aria-pressed={mode === 'live'} onClick={() => chooseMode('live')}>
+              Live
+            </button>
+          </div>
+        )}
       </header>
       <main id="main">
         <nav aria-label="Report progress" className="journey-progress">

@@ -18,10 +18,7 @@ function isBuyingReport(value: unknown): value is BuyingReport {
   );
 }
 
-export function loadMockReport(
-  registration: string,
-  root = process.env.CARSCOPE_ROOT ?? process.cwd(),
-): BuyingReport {
+export function loadMockReport(registration: string, root = process.cwd()): BuyingReport {
   const example = exampleForRegistration(registration);
   if (!example) throw new Error('Mock vehicle unavailable. Choose one of the example vehicles.');
   try {
