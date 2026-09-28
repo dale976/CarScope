@@ -72,6 +72,40 @@ test('spending endpoints require POST, JSON and same origin', async () => {
   ).toBe(415);
 });
 
+test('API maps malformed requests to stable typed errors', async () => {
+  const api = createReportApi({ config: readConfig({}) });
+  const invalidJson = await api(
+    new Request('http://127.0.0.1/api/report-preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{',
+    }),
+  );
+  expect(invalidJson.status).toBe(400);
+  expect(await invalidJson.json()).toEqual({ error: 'Invalid JSON body.', code: 'INVALID_JSON' });
+  const invalidRegistration = await api(
+    post('/api/report-preview', { mode: 'mock', registration: '../secret' }),
+  );
+  expect(invalidRegistration.status).toBe(422);
+  expect((await invalidRegistration.json()).code).toBe('INVALID_REGISTRATION');
+});
+
+test('unexpected API failures return a generic response', async () => {
+  const api = createReportApi({
+    config: readConfig({}),
+    loadMock: () => {
+      throw new Error('private internal failure');
+    },
+  });
+  const response = await api(
+    post('/api/report-preview', { mode: 'mock', registration: 'LD17VAE' }),
+  );
+  expect(response.status).toBe(500);
+  const text = await response.text();
+  expect(text).toContain('INTERNAL_ERROR');
+  expect(text).not.toContain('private internal failure');
+});
+
 test('mock preview stays local and exposes only the public projection', async () => {
   let liveCalls = 0;
   const api = createReportApi({

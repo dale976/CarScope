@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import type { BuyingReport } from '../shared/report';
 import type { DataMode } from '../shared/preview';
 import type { ProviderVehicleDetails } from './provider';
+import { AppError } from './errors';
 
 type MockSession = { mode: 'mock'; registration: string; report: BuyingReport };
 type LiveSession = {
@@ -22,13 +23,22 @@ export function createPreviewSessions(options: { now?: () => number; ttlMs?: num
   const sessions = new Map<string, PreviewSession>();
   const read = (id: string, mode: DataMode, registration: string) => {
     const session = sessions.get(id);
-    if (!session) throw new Error('Preview expired or unavailable. Identify the vehicle again.');
+    if (!session)
+      throw new AppError(
+        'PREVIEW_EXPIRED',
+        410,
+        'Preview expired or unavailable. Identify the vehicle again.',
+      );
     if (now() - session.createdAt > ttlMs) {
       sessions.delete(id);
-      throw new Error('Preview expired. Identify the vehicle again.');
+      throw new AppError('PREVIEW_EXPIRED', 410, 'Preview expired. Identify the vehicle again.');
     }
     if (session.mode !== mode || session.registration !== registration)
-      throw new Error('Preview does not match this registration or data mode.');
+      throw new AppError(
+        'PREVIEW_MISMATCH',
+        409,
+        'Preview does not match this registration or data mode.',
+      );
     return session;
   };
   return {
