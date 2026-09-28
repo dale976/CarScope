@@ -24,12 +24,6 @@ export function formatRegistration(value: string): string {
 }
 
 export function formatDate(value: string): string {
-  const day = /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
-  if (!Number.isFinite(Date.parse(`${day}T12:00:00Z`))) return 'Unavailable';
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${day}T12:00:00Z`));
+  return formatUkDate(value) ?? 'Unavailable';
 }
+import { formatUkDate } from '../shared/date';

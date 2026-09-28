@@ -1,3 +1,4 @@
+import { formatUkDate } from './date';
 import type { BuyingReport } from './report';
 
 export type DataMode = 'mock' | 'live';
@@ -31,13 +32,7 @@ export type VehiclePreview = {
 
 type StatusFact = { status: string; expiry?: string; dueDate?: string; sourceDate?: string };
 const statusDate = (value: string) => {
-  const day = /^\d{4}-\d{2}-\d{2}/.test(value) ? value.slice(0, 10) : value;
-  return new Intl.DateTimeFormat('en-GB', {
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  }).format(new Date(`${day}T12:00:00Z`));
+  return formatUkDate(value) ?? 'Date unavailable';
 };
 export const displayDate = statusDate;
 export function statusCopy(fact: StatusFact, options: { asOf?: string } = {}): string {

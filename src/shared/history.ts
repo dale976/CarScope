@@ -1,3 +1,4 @@
+import { formatUkDate } from './date';
 import type { VehicleDetail, MotRecord, HistoryEvent } from './report';
 export function reportAnchor(value: string) {
   return value
@@ -6,15 +7,7 @@ export function reportAnchor(value: string) {
     .replace(/(^-|-$)/g, '');
 }
 export function dateLabel(value: string) {
-  const date = new Date(value.length === 10 ? `${value}T00:00:00Z` : value);
-  return Number.isFinite(date.getTime())
-    ? date.toLocaleDateString('en-GB', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        timeZone: 'UTC',
-      })
-    : 'Date unavailable';
+  return formatUkDate(value) ?? 'Date unavailable';
 }
 export function motTitle(m: MotRecord) {
   return m.result === 'pass'
