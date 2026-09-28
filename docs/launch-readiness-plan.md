@@ -1,12 +1,14 @@
 # CarScope launch-readiness plan
 
-Updated: 25 September 2026
+Updated: 28 September 2026
 
 ## Where the product stands
 
 CarScope is a polished working prototype with a strong report experience, a free vehicle preview, mock and live supplier modes, and a deterministic buyer briefing. It is not ready to accept public payments until the live data licence, final package cost, consumer terms, report retention rules and failure handling have been agreed.
 
 The shortest responsible route is a small private beta, followed by an introductory £6.99 public launch. The long-term price should remain £9.99 unless the final data package makes that uneconomic.
+
+The repository is now one buying-report application with a production build, validated configuration, typed supplier boundary, structured API errors, security headers, offline tests and CI. The remaining launch work is primarily commercial agreement and the customer systems listed below; the in-memory preview session is suitable for the current single-process prototype only.
 
 ## The immediate sequence
 

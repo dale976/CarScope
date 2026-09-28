@@ -1,148 +1,89 @@
 # CarScope
 
-CarScope is a UK vehicle research prototype built with Bun, React and TypeScript. It currently contains two related products:
+CarScope is a UK vehicle buying-report application built with Bun, React and TypeScript. A customer enters a registration, reviews a limited vehicle preview, and opens a structured report covering provenance, MOT history, valuation, tax, tyres, specifications and ownership context where the supplier returns evidence.
 
-- **Buying Report** — identify a vehicle by registration, show a useful free preview, then generate a structured buyer's report covering provenance, MOT history, valuation, tax, tyres, specifications and ownership costs where data is available.
-- **Enthusiast Search** — explore prestige and enthusiast cars with detailed filters, saved-search and watchlist prototypes, comparisons and specification evidence.
+The application is evidence-led. Missing data remains unavailable, an empty response is not described as a clear history, and the report does not inspect a vehicle or tell a customer whether to buy it.
 
-The project defaults to local mock data. Development and automated tests do not require supplier calls, credentials or paid services.
+## Run locally
 
-## Quick start
-
-Install [Bun](https://bun.sh/docs/installation) 1.2.17 or newer, then run:
+Install [Bun 1.4.2](https://bun.sh/docs/installation), then:
 
 ```sh
 git clone https://github.com/dale976/CarScope.git
 cd CarScope
 bun install --frozen-lockfile
-bun run dev:report
-```
-
-Open [http://127.0.0.1:9000](http://127.0.0.1:9000) for the buying-report journey.
-
-To run the enthusiast-search app instead:
-
-```sh
+cp .env.example .env
 bun run dev
 ```
 
-Open [http://127.0.0.1:3000](http://127.0.0.1:3000).
-
-The `npm run ...` equivalents also work when Bun is installed because the package scripts invoke Bun internally.
+Open [http://127.0.0.1:9000](http://127.0.0.1:9000). The app starts in mock mode and does not need credentials or make supplier requests.
 
 ## Commands
 
 | Command | Purpose |
 | --- | --- |
-| `bun run dev:report` | Run the buying-report app on port 9000 |
-| `bun run dev` | Run the enthusiast-search app on port 3000 |
-| `bun run check` | Run formatting, linting, type checks, tests and production builds |
-| `bun run test` | Run all Bun tests |
-| `bun run build` | Build both apps |
-| `bun run start:report` | Serve the built buying-report app |
-| `bun run start` | Serve the built search app |
-| `bun run smoke:report` | Smoke-test the built buying-report app locally |
-| `bun run smoke` | Smoke-test the built search app locally |
+| `bun run dev` | Start the development server with hot reload |
+| `bun run build` | Create the production bundle in `dist/` |
+| `bun run start` | Build and start the production server |
+| `bun run test` | Run the offline Bun test suite |
+| `bun run check` | Run formatting, lint, types, tests and the production build |
+| `bun run smoke` | Exercise the built app and local API without provider calls |
 
-Use `REPORT_PORT` or `PORT` to choose different local ports.
+The scripts use `scripts/bun.sh`, which can find the project toolchain used by this repository. `npm run dev` also works when Bun is available.
 
-## Buying-report flow
-
-The report app starts in **Mock** mode on every reload:
+## Report journey
 
 1. Enter a registration.
-2. Review the free vehicle preview, including identity, MOT and tax status when returned.
+2. Review the free identity, MOT and tax preview when those records are returned.
 3. Open the complete report.
-4. Review the buyer briefing, records needing attention, history, valuation, running-cost context and detailed vehicle data.
+4. Review the buyer briefing, records requiring attention, history, valuation, ownership context and vehicle details.
 
-Mock reports are read from ignored `.local/*-report.json` files. They are deliberately kept out of Git because supplier-derived examples may contain licensed or vehicle-specific data. If a mock registration is unavailable, the app returns a clear error and never falls back to a live supplier call.
+Development examples are normalized JSON files under the ignored `.local/` directory. An unknown mock registration fails locally and never falls through to a supplier request. Great Britain digital MOT history generally begins in 2005, so older, imported and exempt vehicles may have incomplete evidence.
 
-The report is factual and evidence-led. Missing records remain visibly unavailable; absence of returned data is not presented as a clear history. Great Britain digital MOT history generally begins in 2005, so older, imported and exempt vehicles may have incomplete records.
+Payment, email delivery, accounts, PDF export and permanent report storage are deliberately deferred. The current purchase action opens the development report and does not claim a payment occurred.
 
-Payment, email delivery, PDF export, accounts and permanent report storage are not implemented yet. The current purchase action opens the development report and does not claim that payment has occurred.
+## Optional supplier sandbox
 
-## Optional Vehicle Data Global sandbox
-
-Copy the example environment file and add your own sandbox key:
-
-```sh
-cp .env.example .env
-```
+Set the following only when deliberately testing the Vehicle Data Global sandbox:
 
 ```dotenv
 VDG_SANDBOX_ENABLED=true
 VDG_API_KEY=your_server_side_key
 ```
 
-Live report generation is an explicit development option in the UI. The current integration uses:
+The development UI then offers an explicit data-source selector. Selecting the supplier mode does not itself make a request. The current integration uses `CarScopeFree` for the preview, followed by `VDICheck`, `ValuationDetails` and `TyreDetails` for report completion. Completion calls run concurrently without automatic retries, raw responses are not archived, and credentials never enter browser responses.
 
-- `CarScopeFree` for vehicle identity, image, MOT and tax preview data
-- `VDICheck` for provenance and history evidence
-- `ValuationDetails` for valuation figures
-- `TyreDetails` for vehicle-specific fitments
+Supplier sandbox restrictions apply: registrations must contain the letter `A`, data may be up to 12 months old, and results cannot be used in production or for profit.
 
-The free preview makes one supplier request. Opening the full report makes the three full-report requests concurrently, without retries. Completed reports and raw provider responses are not archived.
-
-Sandbox restrictions apply: registrations must contain the letter **A**, data may be up to 12 months old, and results must not be used in production or for profit. Keep API keys in `.env`; they are read only by the Bun server and are never exposed to React.
-
-## Environment variables
-
-The repository works without an `.env` file.
+## Configuration
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `HOST` | `127.0.0.1` | Local bind address |
-| `PORT` | `3000` | Search app port |
-| `REPORT_PORT` | `9000` | Buying-report app port |
-| `DATA_MODE` | `mock` | Search data source: `mock` or local `cache` |
-| `CAR_CACHE_PATH` | `.cache/cars.json` | Private normalized search snapshot |
-| `VDG_SANDBOX_ENABLED` | `false` | Enables the report app's explicit live sandbox path |
-| `VDG_API_KEY` | empty | Server-only Vehicle Data Global sandbox key |
-| `MARKETCHECK_LIVE_ENABLED` | `false` | Enables deliberately triggered MarketCheck development requests |
-| `MARKETCHECK_API_KEY` | empty | Server-only MarketCheck key |
+| `HOST` | `127.0.0.1` | Server bind address |
+| `PORT` | `9000` | Canonical HTTP port |
+| `REPORT_PORT` | unset | Backwards-compatible port fallback |
+| `PUBLIC_ORIGIN` | unset | Exact public origin required for a non-loopback production host |
+| `VDG_SANDBOX_ENABLED` | `false` | Enables the explicit development supplier path |
+| `VDG_API_KEY` | unset | Server-only supplier sandbox key |
 
-Additional DVLA and DVSA variables in `.env.example` are reserved placeholders and are not wired into the current product.
+Production hides development data-source controls. Keep `.env`, `.local/`, provider responses and credentials out of Git.
 
-Never commit `.env`, `.local`, `.cache`, `.budget`, provider responses or API keys.
-
-## Repository structure
+## Structure
 
 ```text
-apps/
-  buying-report/   Registration journey, report UI, provider integration and tests
-  search/          Enthusiast search, fixtures, live development preview and tests
-packages/
-  ui/              Shared CarScope branding
-scripts/           Workspace, runtime and production launchers
-docs/              Architecture and product notes
+src/client/       React journey, report chapters and responsibility-based styles
+src/domain/       Tested interpretation and buyer-facing wording
+src/server/       Configuration, HTTP API, sessions, logging and supplier boundary
+src/shared/       Public report, preview and history contracts
+fixtures/         Fictional test data
+tests/            Offline behavior and repository-boundary tests
+scripts/          Build, production start and smoke tooling
+docs/             Architecture and launch-readiness notes
 ```
 
-Both applications use a same-origin React client and Bun API:
+The browser communicates only with same-origin `/api/*` routes. Supplier envelopes are validated and normalized at the server boundary before domain or UI code sees them. Optional package failures produce explicit gaps instead of fabricated defaults.
 
-```text
-React UI  ── /api/* ──>  Bun server  ──>  mock/local data
-                                  └──>  supplier API only after an explicit live action
-```
-
-The buying-report code separates provider transport, normalization, domain interpretation and presentation. Report chapters are independent React components, while status wording and buyer-facing summaries come from tested domain builders. This keeps supplier response shapes out of the UI and makes partial data predictable.
-
-## Development safeguards
-
-- Mock mode is the default and has no outbound provider branch.
-- Live actions are explicit; selecting Live alone does not make a request.
-- Provider keys and raw billing fields remain server-side.
-- Missing optional packages produce a partial report with a visible data note.
-- Concurrent requests for the same report share one in-flight operation.
-- MarketCheck development requests use a local cumulative £10 reservation ledger; this is an engineering guard, not an account billing cap.
-- The test suite uses fixtures and does not consume supplier allowance.
-
-Before any public launch, agree the final package, consumer-facing rights, provenance wording, retention rules and commercial pricing with the data supplier. Production also needs payment, report delivery, privacy and support flows.
-
-## Search prototype
-
-The search app supports text and structured filtering across make, model, derivative, year, transmission, price, mileage and equipment preferences. It includes responsive result cards, shared detail views, asking-price history, current-batch comparables, and browser-local watch/search prototypes.
-
-Its default inventory is fictional and offline. A separately controlled `/live` route can query MarketCheck during deliberate local testing. It does not poll, retry or persist responses. Search pagination and opening a live detail each count as another request.
+See [docs/architecture.md](docs/architecture.md) for the runtime boundaries and [docs/launch-readiness-plan.md](docs/launch-readiness-plan.md) for the commercial and operational work required before launch.
 
 ## Licence
 
