@@ -2,7 +2,10 @@
   "$schema": "https://biomejs.dev/schemas/2.5.14/schema.json",
   "files": {
     "includes": [
-      "apps/buying-report/**",
+      "src/**",
+      "tests/**",
+      "fixtures/**",
+      "scripts/**",
       "!**/dist/**",
       "!**/node_modules/**",
       "!**/.cache/**",
@@ -38,12 +41,24 @@
         "noDescendingSpecificity": "off"
       },
       "suspicious": {
-        "noArrayIndexKey": "off",
-        "noExplicitAny": "off"
-      },
-      "a11y": {
-        "useSemanticElements": "off"
+        "noArrayIndexKey": "off"
       }
     }
-  }
+  },
+  "overrides": [
+    {
+      "includes": [
+        "src/client/App.tsx",
+        "src/client/HistoryView.tsx",
+        "src/client/report/RecordOverview.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off"
+          }
+        }
+      }
+    }
+  ]
 }

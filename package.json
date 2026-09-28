@@ -4,24 +4,19 @@
   "private": true,
   "type": "module",
   "engines": {
-    "bun": ">=1.2.17"
+    "bun": ">=1.4.2"
   },
   "scripts": {
-    "dev": "sh scripts/bun.sh scripts/workspace.ts dev search",
-    "dev:report": "sh scripts/bun.sh scripts/workspace.ts dev buying-report",
-    "start": "sh scripts/bun.sh scripts/start.ts search",
-    "start:report": "sh scripts/bun.sh scripts/start.ts buying-report",
-    "build": "sh scripts/bun.sh scripts/workspace.ts build",
-    "test": "sh scripts/bun.sh test tests apps/search/tests apps/buying-report/tests",
+    "dev": "sh scripts/bun.sh --env-file=.env --hot src/server/index.ts",
+    "start": "sh scripts/bun.sh scripts/start-production.ts",
+    "build": "sh scripts/bun.sh scripts/build.ts",
+    "test": "sh scripts/bun.sh test tests",
     "typecheck": "sh scripts/bun.sh --bun tsc --noEmit",
-    "format": "sh scripts/bun.sh x biome format --write apps/buying-report",
-    "format:check": "sh scripts/bun.sh x biome format apps/buying-report",
-    "lint": "sh scripts/bun.sh x biome lint apps/buying-report",
+    "format": "sh scripts/bun.sh x biome format --write src tests fixtures scripts",
+    "format:check": "sh scripts/bun.sh x biome format src tests fixtures scripts",
+    "lint": "sh scripts/bun.sh x biome lint src tests fixtures scripts",
     "check": "sh scripts/bun.sh run format:check && sh scripts/bun.sh run lint && sh scripts/bun.sh run typecheck && sh scripts/bun.sh run test && sh scripts/bun.sh run build",
-    "smoke": "sh scripts/bun.sh apps/search/scripts/smoke.ts",
-    "smoke:report": "sh scripts/bun.sh apps/buying-report/scripts/smoke.ts",
-    "cache:import": "sh scripts/bun.sh apps/search/scripts/import-cache.ts",
-    "marketcheck:count": "sh scripts/bun.sh apps/search/scripts/marketcheck-count.ts"
+    "smoke": "sh scripts/bun.sh scripts/smoke.ts"
   },
   "dependencies": {
     "react": "^19.1.0",
@@ -34,9 +29,5 @@
     "@types/react-dom": "^19.1.0",
     "typescript": "^5.9.0"
   },
-  "packageManager": "bun@1.4.2",
-  "workspaces": [
-    "apps/*",
-    "packages/*"
-  ]
+  "packageManager": "bun@1.4.2"
 }

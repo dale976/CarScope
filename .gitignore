@@ -3,13 +3,9 @@ dist/
 .env
 .env.*
 !.env.example
-.cache/
 .DS_Store
-.tools/
+.tools
 .worktrees/
-
-# Persistent local spend accounting (not provider data)
-.budget/
 
 # Local IDE settings
 .idea/

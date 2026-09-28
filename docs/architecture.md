@@ -1,49 +1,51 @@
-# CarScope workspace architecture
+# CarScope architecture
 
-Two independent React/TypeScript applications use Bun’s HTML bundler and HTTP server. Root commands retain the existing search workflow and add a buying-report workflow.
+CarScope is one Bun application with a React browser client and a same-origin HTTP API. The repository is organized by responsibility so supplier formats, report interpretation and presentation remain independent.
 
-## Boundaries
+## Runtime
 
-- `apps/search` owns enthusiast listings, MarketCheck live preview, filtering, detail views, watch stubs, fixture adapters and search tests.
-- `apps/buying-report` owns the consumer report model, fixed fictional example, frontend, same-origin sample endpoint and report tests. It does not import search logic or provider clients.
-- `packages/ui` exports the existing BrandMark. It has no app dependency. Extract further shared controls only when both products use them.
-- `scripts/workspace.ts` selects the app, resolves repository paths and starts/builds child Bun processes. `scripts/bun.sh` locates the project-local Bun binary for IDE/npm commands.
+`src/server/index.ts` reads validated configuration, creates the logger and in-memory preview-session store, and starts `Bun.serve`. React is served at `/` and `/report`; application endpoints live under `/api/*`.
 
-## Runtime and state
+```text
+React client ── same-origin JSON ──> Bun API ──> mock report files
+                                      └───────> supplier sandbox after an explicit action
+```
 
-Each app builds to its own `dist` and serves frontend/API on one origin. Defaults are search port 3000 and report port 3001. Root `.env` is server-only and loaded explicitly by launchers. Root `.cache` and `.budget` remain private and are not migrated into workspaces. Search receives canonical absolute cache/budget paths before server import; production startup without the root launcher fails closed. The existing £10 ledger is never initialized or reset by startup.
+`PORT` is canonical and defaults to 9000. `REPORT_PORT` remains a temporary compatibility fallback. A production server bound beyond loopback requires an exact `PUBLIC_ORIGIN`, which is also used for mutation-origin checks. The browser receives only a small runtime configuration object and never receives credentials.
 
-## Data flow
+## Layers
 
-Search demo reads fictional fixtures or an explicitly selected permitted local cache. Its separate `/live` API reserves an allowance before each user-requested provider call; no startup, polling, retry or automatic cache-miss calls are introduced.
+- `src/client` owns the registration journey, free preview, complete report chapters and visual presentation. Styles are split into base, layout, journey, report and history responsibilities with a fixed cascade order.
+- `src/domain` converts normalized facts into status wording, record summaries, formatting and deterministic buyer briefing content. These functions do not know supplier response shapes.
+- `src/server` owns configuration, HTTP policy, preview sessions, mock loading and provider integration.
+- `src/server/provider` validates unknown supplier data and composes normalized report contracts. Malformed optional sections degrade to explicit gaps; required identity failure remains a typed supplier error.
+- `src/shared` defines the preview, report, history and journey contracts shared across the server and client.
 
-Buying report: registration → same-origin JSON `POST /api/report-preview` → normalized allowlisted preview → `POST /api/report-generate` → complete normalized report. Mock reads only a known registration from ignored `.local/` files. Live preview makes one vehicle-details call and live generation makes three remaining package calls, without retries. A random preview ID refers to a server-only 30-minute in-memory session; it is bound to the exact mode and registration, coalesces concurrent generation, and is removed after success or expiry. Raw payloads, keys and billing fields never enter public responses. Completed reports are not persisted.
+## Request flow
 
-## Verification
+`POST /api/report-preview` validates the registration and mode. Mock mode resolves an allowlisted local example. Supplier mode performs the one preview-package request only after the user submits. The response contains a normalized public preview and an opaque preview ID.
 
-Root `check` covers TypeScript, both test suites and both production builds. Separate smoke commands validate built HTML/assets, deep links and APIs on loopback. Report tests cover evidence labels, unperformed checks, cost assumptions, loading/error states and independent configuration. Workspace tests protect persistent paths. No verification command makes provider requests.
+`POST /api/report-generate` requires the matching preview ID, registration and mode. The server-bound session expires after 30 minutes, coalesces concurrent completion attempts and is removed after successful generation. Completion requests optional provenance, valuation and tyre data concurrently. Failed optional sources are reported as missing evidence and are never translated into a clear check.
 
-See the multi-module spec and implementation plan under `docs/superpowers/` for scope and acceptance criteria.
-## Buying-report supplier path
+The current session store is intentionally in memory. A durable, shared implementation must replace it before running multiple server instances or accepting payments.
 
-The buying-report browser calls only CarScope's staged same-origin routes. The Bun
-server validates the sandbox registration rule and normalises Vehicle Data Global
-packages into the shared preview and `BuyingReport` shapes. Provider credentials
-stay in the server environment. Selecting Live alone never spends a call.
+## HTTP and operational policy
 
-Vehicle details is the one-call identity anchor and must succeed. The later VDI,
-valuation and tyre calls run concurrently and may fail independently; the report
-shows remaining evidence and records the missing package under sources and gaps.
-There is no completed-response cache, database or raw-payload storage. `.local/`
-contains private normalized development examples only and remains Git-ignored.
+- API responses receive content-security, content-type, referrer, permissions and no-store protections.
+- Client errors use stable public codes; unexpected failures return a generic response.
+- Production logs are structured and accept only allowlisted operational fields.
+- Health checks are local and never invoke a provider.
+- Mock tests, builds, CI and smoke checks make no supplier requests.
+- Raw provider payloads, credentials and billing fields are not returned to the browser or persisted.
 
-Great Britain digital MOT records generally start in 2005. Older, imported and
-exempt vehicles may have incomplete coverage. Missing records do not establish a
-clear history, and tax/MOT wording is dated from the supplied evidence. Payment,
-email, PDF delivery and report persistence remain outside the current runtime.
+## Configuration policy
 
-For EVs, traction-battery and charging specifications are normalised from
-`VehicleDetailsWithImage.ModelDetails.Powertrain.EvDetails`; no additional provider
-call is needed. The separate `BatteryDetails` package concerns starter batteries.
-The report must never infer present battery health from model capacity, range,
-warranty or charging specifications.
+Configuration is parsed once by `src/server/config.ts`. Sandbox mode requires a server-side key. Production hides the development data-source selector. Non-loopback production startup fails closed without a valid public origin.
+
+The application remains usable without an `.env` file. `.env` and private `.local/` examples are ignored; `.env.example` contains names and safe defaults only.
+
+## Deferred production systems
+
+The current foundation does not yet provide payment, email, durable report access, PDF delivery, distributed sessions, rate limiting, bot controls, customer support tooling or supplier-cost monitoring. These should be introduced only after supplier display and retention rights, critical-source failure policy and unit economics are agreed.
+
+Historical design records in `docs/superpowers/` describe earlier repository states. They are retained as decision history and do not define the active architecture.

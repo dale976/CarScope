@@ -19,8 +19,8 @@
     ]
   },
   "include": [
-    "apps",
-    "packages",
+    "src",
+    "fixtures",
     "tests",
     "scripts"
   ],
