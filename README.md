@@ -42,6 +42,25 @@ Development examples are normalized JSON files under the ignored `.local/` direc
 
 Payment, email delivery, accounts, PDF export and permanent report storage are deliberately deferred. The current purchase action opens the development report and does not claim a payment occurred.
 
+## DVSA MOT History lookup
+
+The server-side DVSA diagnostic client can inspect vehicle identity and MOT evidence independently of
+the customer journey. Add `DVSA_CLIENT_ID`, `DVSA_CLIENT_SECRET`, `DVSA_API_KEY`, `DVSA_SCOPE` and
+`DVSA_TOKEN_URL` to the ignored `.env` file, using the values supplied by DVSA. See `.env.example`
+for the non-secret format. Then run:
+
+```sh
+bun run dvsa:lookup -- YJ22ACU
+```
+
+The command prints normalized vehicle/MOT JSON and exits nonzero on configuration, authentication,
+lookup or validation failure. It omits VIN and test identifiers, does not archive raw responses and
+makes no VDG requests. Access tokens remain in memory and are reused within the client instance;
+each separate command process authenticates again. Tests and the normal application startup do not
+make DVSA requests. This does not yet replace the preview or supply tax or provenance checks.
+
+See [the DVSA data review](docs/dvsa-data-review.md) for observed coverage and limitations.
+
 ## Optional supplier sandbox
 
 Set the following only when deliberately testing the Vehicle Data Global sandbox:

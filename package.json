@@ -16,7 +16,8 @@
     "format:check": "sh scripts/bun.sh x biome format src tests fixtures scripts",
     "lint": "sh scripts/bun.sh x biome lint src tests fixtures scripts",
     "check": "sh scripts/bun.sh run format:check && sh scripts/bun.sh run lint && sh scripts/bun.sh run typecheck && sh scripts/bun.sh run test && sh scripts/bun.sh run build",
-    "smoke": "sh scripts/bun.sh scripts/smoke.ts"
+    "smoke": "sh scripts/bun.sh scripts/smoke.ts",
+    "dvsa:lookup": "sh scripts/bun.sh --env-file=.env scripts/dvsa-lookup.ts"
   },
   "dependencies": {
     "react": "^19.1.0",
