@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { RegistrationStep } from './journey/RegistrationStep';
-import { PreviewStep } from './journey/PreviewStep';
-import { ReportStep } from './journey/ReportStep';
-import type { BuyingReport } from '../shared/report';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { ClientRuntimeConfig, DataMode, VehiclePreview } from '../shared/preview';
+import type { BuyingReport } from '../shared/report';
+import { PreviewStep } from './journey/PreviewStep';
+import { RegistrationStep } from './journey/RegistrationStep';
+import { ReportStep } from './journey/ReportStep';
+import { createRequestGate } from './journey/request-gate';
 
 type Stage = 'registration' | 'identifying' | 'preview' | 'generating' | 'report';
 const examples = [
@@ -38,12 +39,14 @@ export function App({
   const [report, setReport] = useState<BuyingReport | null>(null);
   const [error, setError] = useState('');
   const heading = useRef<HTMLDivElement>(null);
+  const requests = useRef(createRequestGate());
   const busy = stage === 'identifying' || stage === 'generating';
   useEffect(() => {
     heading.current?.focus();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
   function clearResults() {
+    requests.current.invalidate();
     setPreview(null);
     setReport(null);
     setError('');
@@ -56,6 +59,7 @@ export function App({
     clearResults();
   }
   function changeRegistration(value: string) {
+    requests.current.invalidate();
     setRegistration(value.toUpperCase());
     if (preview || report) {
       setPreview(null);
@@ -69,37 +73,43 @@ export function App({
     setError('');
     setReport(null);
     setStage('identifying');
-    try {
-      const value = await post<VehiclePreview>('/api/report-preview', { mode, registration });
-      setPreview(value);
-      setRegistration(value.registration);
-      setStage('preview');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to identify the vehicle.');
-      setStage('registration');
-    }
+    await requests.current.run(
+      () => post<VehiclePreview>('/api/report-preview', { mode, registration }),
+      (value) => {
+        setPreview(value);
+        setRegistration(value.registration);
+        setStage('preview');
+      },
+      (e) => {
+        setError(e instanceof Error ? e.message : 'Unable to identify the vehicle.');
+        setStage('registration');
+      },
+    );
   }
   async function generate() {
     if (report) {
       setStage('report');
       return;
     }
-    if (!preview) return;
+    if (preview?.source !== 'mock' || mode !== 'mock') return;
     setError('');
     setStage('generating');
-    try {
-      setReport(
-        await post<BuyingReport>('/api/report-generate', {
+    await requests.current.run(
+      () =>
+        post<BuyingReport>('/api/report-generate', {
           mode,
           registration: preview.registration,
           previewId: preview.previewId,
         }),
-      );
-      setStage('report');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to prepare the report.');
-      setStage('preview');
-    }
+      (value) => {
+        setReport(value);
+        setStage('report');
+      },
+      (e) => {
+        setError(e instanceof Error ? e.message : 'Unable to prepare the report.');
+        setStage('preview');
+      },
+    );
   }
   return (
     <>
@@ -119,9 +129,15 @@ export function App({
             <button type="button" aria-pressed={mode === 'mock'} onClick={() => chooseMode('mock')}>
               Mock
             </button>
-            <button type="button" aria-pressed={mode === 'live'} onClick={() => chooseMode('live')}>
-              Live
-            </button>
+            {runtimeConfig.officialPreview && (
+              <button
+                type="button"
+                aria-pressed={mode === 'official'}
+                onClick={() => chooseMode('official')}
+              >
+                DVLA + DVSA
+              </button>
+            )}
           </div>
         )}
       </header>

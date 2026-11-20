@@ -45,7 +45,7 @@ valuation, independent mileage-source checks, finance, theft, insurance write-of
 keeper/plate changes, recalls or service history. Do not substitute MOT evidence for these checks.
 Registration/manufacture fields must be used as named; do not infer import history from one result.
 
-The current customer preview still uses the existing VDG/mock journey. Before replacing it, evaluate
+As of 20 November 2026, the development preview can combine DVSA evidence with DVLA vehicle/tax data, while mock remains the default. VDG is excluded from the free-preview API. Before public rollout, evaluate
 additional examples: an EV, a car not yet due its first MOT, a failed-MOT vehicle, older/imported
 vehicles, and absent/partial records. Confirm current commercial reuse, attribution and access
 conditions directly with DVSA. This technical lookup is not a licence review.
@@ -63,5 +63,5 @@ Official documentation:
 
 Offline checks cover credential validation, approved destinations, request authentication,
 registration validation, token concurrency/refresh/recovery, safe errors, identity mismatches,
-malformed data, missing versus empty history, unit preservation and unread odometers. The baseline
-suite had 106 passing tests; the DVSA change adds 12 tests, bringing the suite to 118.
+malformed data, missing versus empty history, unit preservation and unread odometers. At the original diagnostic stage, the baseline
+suite had 106 passing tests and the first DVSA change added 12 tests (118 total). The combined-preview change adds further regression coverage; consult the current test run for totals.

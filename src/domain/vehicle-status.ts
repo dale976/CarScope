@@ -15,6 +15,7 @@ export function buildMotDisplay(status: MotStatus | undefined): VehicleStatusDis
     ? {
         valid: 'MOT valid',
         expired: 'MOT expired',
+        'not-valid': 'MOT not valid',
         failed: 'Latest MOT failed',
         exempt: 'MOT exempt',
         unavailable: 'MOT status unavailable',

@@ -14,7 +14,7 @@ describe('buying report entry page', () => {
   test('starts in mock mode with four optional examples and no sandbox controls', () => {
     const html = renderToStaticMarkup(<App />);
     expect(html).toContain('aria-pressed="true">Mock');
-    expect(html).toContain('aria-pressed="false">Live');
+    expect(html).not.toContain('>Live</button>');
     expect(html.match(/class="example-vehicle"/g)).toHaveLength(4);
     expect(html).not.toContain('100 supplier calls');
     expect(html).not.toContain('30 registrations');
@@ -25,4 +25,12 @@ describe('buying report entry page', () => {
     expect(html).not.toContain('aria-label="Data source"');
     expect(html).not.toContain('>Live</button>');
   });
+});
+
+test('official source control is offered only when explicitly enabled', () => {
+  const html = renderToStaticMarkup(
+    <App runtimeConfig={{ sandboxControls: true, officialPreview: true }} />,
+  );
+  expect(html).toContain('DVLA + DVSA');
+  expect(html).not.toContain('>Live</button>');
 });

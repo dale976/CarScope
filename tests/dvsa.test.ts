@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createDvsaClient, readDvsaConfig, type DvsaConfig } from '../src/server/dvsa/client';
+import { createDvsaClient, type DvsaConfig, readDvsaConfig } from '../src/server/dvsa/client';
 import { normalizeDvsaVehicle } from '../src/server/dvsa/normalize';
 
 const config: DvsaConfig = {
@@ -34,6 +34,31 @@ const vehicle = {
   ],
 };
 const token = () => Response.json({ access_token: 'test-token', expires_in: 3600 });
+
+test('DVSA expiry rejects trailing garbage rather than certifying a truncated date', () => {
+  expect(() =>
+    normalizeDvsaVehicle(
+      { ...vehicle, motTests: [{ ...vehicle.motTests[0], expiryDate: '2027-05-10garbage' }] },
+      'AB12CDE',
+    ),
+  ).toThrow();
+});
+test('DVSA retains legacy annotations even when modern defects is an empty array', () => {
+  const result = normalizeDvsaVehicle(
+    {
+      ...vehicle,
+      motTests: [
+        {
+          ...vehicle.motTests[0],
+          defects: [],
+          rfrAndComments: [{ type: 'ADVISORY', text: 'Brake worn' }],
+        },
+      ],
+    },
+    'AB12CDE',
+  );
+  expect(result.motTests?.[0]?.defects?.[0]?.text).toBe('Brake worn');
+});
 
 test('DVSA configuration requires all credentials without disclosing their values', () => {
   expect(() => readDvsaConfig({ DVSA_CLIENT_SECRET: 'private-secret' })).toThrow('DVSA_CLIENT_ID');

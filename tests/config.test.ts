@@ -15,8 +15,8 @@ test('unsupported explicit environments fail closed', () => {
   expect(readConfig({}).environment).toBe('development');
 });
 
-test('sandbox configuration requires a server-side key', () => {
-  expect(() => readConfig({ VDG_SANDBOX_ENABLED: 'true' })).toThrow('VDG_API_KEY');
+test('legacy VDG configuration never prevents free previews from starting', () => {
+  expect(readConfig({ VDG_SANDBOX_ENABLED: 'true' }).client.officialPreview).toBe(false);
   expect(readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'secret' }).sandbox).toEqual({
     enabled: true,
     apiKey: 'secret',
@@ -80,8 +80,16 @@ test('production origin comparison is exact and development stays same-origin', 
 test('configuration resolves the private mock root and exposes safe runtime settings', () => {
   const config = readConfig({ CARSCOPE_ROOT: '/tmp/carscope-test' });
   expect(config.root).toBe('/tmp/carscope-test');
-  expect(config.client).toEqual({ sandboxControls: true });
+  expect(config.client).toEqual({ sandboxControls: true, officialPreview: false });
   expect(readConfig({ NODE_ENV: 'production', VDG_API_KEY: 'secret' }).client).toEqual({
     sandboxControls: false,
+    officialPreview: false,
   });
+});
+
+test('official mode requires explicit opt-in and is never enabled in production', () => {
+  expect(readConfig({ OFFICIAL_PREVIEW_ENABLED: 'true' }).client.officialPreview).toBe(true);
+  expect(
+    readConfig({ NODE_ENV: 'production', OFFICIAL_PREVIEW_ENABLED: 'true' }).client.officialPreview,
+  ).toBe(false);
 });

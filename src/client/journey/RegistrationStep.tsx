@@ -66,7 +66,9 @@ export function RegistrationStep({
         <button type="submit" className="primary" disabled={busy}>
           {busy ? 'Identifying vehicle…' : 'Identify vehicle'} <span aria-hidden="true">↗</span>
         </button>
-        {mode === 'live' && <p className="call-note">Uses 1 supplier call</p>}
+        {mode === 'official' && (
+          <p className="call-note">Free preview from DVLA and DVSA. No paid report lookup.</p>
+        )}
         <div className="coverage-note">
           <strong>About historical coverage</strong>
           <p>

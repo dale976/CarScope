@@ -1,17 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import type { BuyingReport } from '../shared/report';
 import type { DataMode } from '../shared/preview';
+import type { BuyingReport } from '../shared/report';
 import { AppError } from './errors';
-import type { ProviderVehicleDetails } from './provider';
 
 type MockSession = { mode: 'mock'; registration: string; report: BuyingReport };
-type LiveSession = {
-  mode: 'live';
-  registration: string;
-  details: ProviderVehicleDetails;
-  previewData: ProviderVehicleDetails;
-};
-export type NewPreviewSession = MockSession | LiveSession;
+export type NewPreviewSession = MockSession;
 export type PreviewSession = NewPreviewSession & {
   createdAt: number;
   inflight?: Promise<BuyingReport>;

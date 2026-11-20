@@ -1,8 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sampleReport } from '../fixtures/sample-report';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+
 const port = 49000 + Math.floor(Math.random() * 10000);
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const base = new URL(`http://127.0.0.1:${port}`);
@@ -23,8 +24,11 @@ const child = Bun.spawn([process.execPath, 'index.js'], {
     ...process.env,
     CARSCOPE_ROOT: fixtureRoot,
     HOST: '127.0.0.1',
+    PORT: String(port),
     REPORT_PORT: String(port),
     NODE_ENV: 'production',
+    OFFICIAL_PREVIEW_ENABLED: 'false',
+    VDG_SANDBOX_ENABLED: 'false',
   },
   stdout: 'ignore',
   stderr: 'pipe',
@@ -87,20 +91,19 @@ try {
   });
   if (report.kind !== 'sandbox-example' || report.registration !== 'LD17VAE')
     throw new Error('Unexpected generated mock report');
-  if (process.env.VDG_SMOKE_LIVE === 'true') {
-    const liveRegistration = process.argv[2];
-    if (!liveRegistration)
-      throw new Error('Pass a registration containing A when VDG_SMOKE_LIVE=true.');
-    console.log('This action makes 4 supplier calls: 1 preview + 3 report');
-    const livePreview = await post('/api/report-preview', {
-      mode: 'live',
-      registration: liveRegistration,
+  for (const [path, mode, expectedStatus] of [
+    ['/api/report-preview', 'official', 503],
+    ['/api/report-preview', 'live', 422],
+    ['/api/report-generate', 'official', 409],
+    ['/api/report-generate', 'live', 422],
+  ] as const) {
+    const response = await fetch(new URL(path, base), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, registration: 'LD17VAE' }),
     });
-    await post('/api/report-generate', {
-      mode: 'live',
-      registration: liveRegistration,
-      previewId: livePreview.previewId,
-    });
+    if (response.status !== expectedStatus)
+      throw new Error(`Unexpected production boundary for ${path}/${mode}: ${response.status}`);
   }
   if ((await fetch(new URL('/missing', base))).status !== 404)
     throw new Error('Missing route should be 404');

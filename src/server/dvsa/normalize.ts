@@ -1,3 +1,4 @@
+import { AppError } from '../errors';
 import { asRecord, readDate, readString } from '../provider/guards';
 
 export type DvsaMotTest = {
@@ -33,7 +34,14 @@ function integer(value: unknown): number | undefined {
 
 function date(value: unknown): string | undefined {
   if (value === undefined || value === null) return undefined;
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return invalid();
   return readDate(value) ?? invalid();
+}
+
+export function motTimestamp(value: string): number {
+  const normalized = value.replace(' ', 'T');
+  // Compare offset-free service timestamps consistently, independent of the host timezone.
+  return Date.parse(/(?:Z|[+-]\d{2}:\d{2})$/.test(normalized) ? normalized : `${normalized}Z`);
 }
 
 function normalizeTest(value: unknown): DvsaMotTest {
@@ -42,9 +50,19 @@ function normalizeTest(value: unknown): DvsaMotTest {
   const completedDate = readString(test, 'completedDate');
   const testResult = readString(test, 'testResult');
   if (!completedDate || !readDate(completedDate) || !testResult) return invalid();
-  if (!Number.isFinite(Date.parse(completedDate.replace(' ', 'T')))) return invalid();
-  const annotations = test.defects ?? test.rfrAndComments;
-  if (annotations !== undefined && !Array.isArray(annotations)) return invalid();
+  if (
+    !/^\d{4}-\d{2}-\d{2}[T ](?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d(?:\.\d{1,9})?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)?$/.test(
+      completedDate,
+    ) ||
+    !Number.isFinite(motTimestamp(completedDate))
+  )
+    return invalid();
+  const annotationSets = [test.defects, test.rfrAndComments].filter(
+    (value) => value !== undefined && value !== null,
+  );
+  const annotations = annotationSets.length
+    ? annotationSets.flatMap((value) => (Array.isArray(value) ? value : invalid()))
+    : undefined;
   const defects = annotations?.map((value: unknown) => {
     const annotation = asRecord(value);
     const text = readString(annotation, 'text');
@@ -65,7 +83,9 @@ function normalizeTest(value: unknown): DvsaMotTest {
       unit: readString(test, 'odometerUnit'),
       resultType,
     },
-    defects,
+    defects: defects
+      ? [...new Map(defects.map((item) => [JSON.stringify(item), item])).values()]
+      : undefined,
   };
 }
 
@@ -73,6 +93,12 @@ export function normalizeDvsaVehicle(value: unknown, expectedRegistration: strin
   const vehicle = asRecord(value);
   const registration = readString(vehicle, 'registration');
   const make = readString(vehicle, 'make');
+  if (registration && registration !== expectedRegistration)
+    throw new AppError(
+      'IDENTITY_MISMATCH',
+      502,
+      'DVSA vehicle identity did not match the requested registration.',
+    );
   if (!vehicle || registration !== expectedRegistration || !make) return invalid();
   if (vehicle.motTests !== undefined && !Array.isArray(vehicle.motTests)) return invalid();
   return {

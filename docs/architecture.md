@@ -8,7 +8,7 @@ CarScope is one Bun application with a React browser client and a same-origin HT
 
 ```text
 React client ── same-origin JSON ──> Bun API ──> mock report files
-                                      └───────> supplier sandbox after an explicit action
+                                      └───────> DVLA + DVSA after explicit free-preview submission
 ```
 
 `PORT` is canonical and defaults to 9000. `REPORT_PORT` remains a temporary compatibility fallback. A production server bound beyond loopback requires an exact `PUBLIC_ORIGIN`, which is also used for mutation-origin checks. The browser receives only a small runtime configuration object and never receives credentials.
@@ -23,11 +23,21 @@ React client ── same-origin JSON ──> Bun API ──> mock report files
 
 ## Request flow
 
-`POST /api/report-preview` validates the registration and mode. Mock mode resolves an allowlisted local example. Supplier mode performs the one preview-package request only after the user submits. The response contains a normalized public preview and an opaque preview ID.
+`POST /api/report-preview` accepts `mock` or `official`, never VDG `live` mode.
+Mock projects an allowlisted local report and creates an opaque 30-minute demo session.
+Official mode is explicitly enabled in development/test and denied server-side in
+production. It requests configured DVLA/DVSA sources concurrently, validates identity,
+and returns normalized facts, MOT history, source states and UAT notices. Partial
+success exposes gaps; identity conflicts stop merging. No paid fallback or retries.
+The per-instance DVLA client rejects requests less than 500ms apart without queuing.
 
-`POST /api/report-generate` requires the matching preview ID, registration and mode. The server-bound session expires after 30 minutes, coalesces concurrent completion attempts and is removed after successful generation. Completion requests optional provenance, valuation and tyre data concurrently. Failed optional sources are reported as missing evidence and are never translated into a clear check.
+`POST /api/report-generate` completes mock sessions only. Official mode returns
+`PAID_REPORT_UNAVAILABLE` before session or supplier work. The browser disables its
+full-report action until paid fulfilment exists. No VDG import is reachable from
+this API. Isolated legacy VDG helpers remain for future paid-report work and tests.
 
-The current session store is intentionally in memory. A durable, shared implementation must replace it before running multiple server instances or accepting payments.
+Mock completion sessions expire after 30 minutes, coalesce concurrent completions
+and are removed after success. Durable payment/report storage is future work.
 
 ## HTTP and operational policy
 
@@ -40,7 +50,7 @@ The current session store is intentionally in memory. A durable, shared implemen
 
 ## Configuration policy
 
-Configuration is parsed once by `src/server/config.ts`. Sandbox mode requires a server-side key. Production hides the development data-source selector. Non-loopback production startup fails closed without a valid public origin.
+Configuration is parsed once by `src/server/config.ts`. Official mode uses server-only DVLA/DVSA credentials. Missing sources remain unconfigured and do not prevent offline startup. Production hides the development data-source selector and rejects official lookups. Non-loopback production startup fails closed without a valid public origin.
 
 The application remains usable without an `.env` file. `.env` and private `.local/` examples are ignored; `.env.example` contains names and safe defaults only.
 

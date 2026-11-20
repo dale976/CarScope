@@ -1,6 +1,8 @@
 import { resolve } from 'node:path';
+import { type DvlaConfig, readDvlaConfig } from './dvla/client';
+import { type DvsaConfig, readDvsaConfig } from './dvsa/client';
 
-export type ClientRuntimeConfig = { sandboxControls: boolean };
+export type ClientRuntimeConfig = { sandboxControls: boolean; officialPreview?: boolean };
 
 export type ServerConfig = {
   environment: 'development' | 'test' | 'production';
@@ -8,6 +10,7 @@ export type ServerConfig = {
   port: number;
   publicOrigin?: string;
   sandbox: { enabled: boolean; apiKey?: string };
+  official: { enabled: boolean; dvla?: DvlaConfig; dvsa?: DvsaConfig };
   root: string;
   client: ClientRuntimeConfig;
 };
@@ -54,18 +57,35 @@ export function readConfig(env: Record<string, string | undefined> = process.env
   const host = env.HOST ?? '127.0.0.1';
   const origin = publicOrigin(env.PUBLIC_ORIGIN);
   const sandboxEnabled = env.VDG_SANDBOX_ENABLED === 'true';
-  if (sandboxEnabled && !env.VDG_API_KEY)
-    throw new Error('VDG_API_KEY is required when the Vehicle Data Global sandbox is enabled.');
   if (runtime === 'production' && !loopbackHosts.has(host) && !origin)
     throw new Error('PUBLIC_ORIGIN is required for a non-loopback production host.');
+  const officialEnabled = env.OFFICIAL_PREVIEW_ENABLED === 'true' && runtime !== 'production';
+  const dvlaKey =
+    env.DVLA_ENVIRONMENT === 'production' ? env.DVLA_PROD_API_KEY : env.DVLA_TEST_API_KEY;
+  const dvla =
+    officialEnabled && (dvlaKey?.trim() || env.DVLA_API_KEY?.trim())
+      ? readDvlaConfig(env)
+      : undefined;
+  const dvsaNames = [
+    'DVSA_CLIENT_ID',
+    'DVSA_CLIENT_SECRET',
+    'DVSA_API_KEY',
+    'DVSA_SCOPE',
+    'DVSA_TOKEN_URL',
+  ];
+  const dvsa =
+    officialEnabled && dvsaNames.every((name) => env[name]?.trim())
+      ? readDvsaConfig(env)
+      : undefined;
   return {
     environment: runtime,
     host,
     port: port(env.PORT ?? env.REPORT_PORT),
     publicOrigin: origin,
     sandbox: { enabled: sandboxEnabled, apiKey: env.VDG_API_KEY },
+    official: { enabled: officialEnabled, dvla, dvsa },
     root: resolve(env.CARSCOPE_ROOT ?? process.cwd()),
-    client: { sandboxControls: runtime !== 'production' },
+    client: { sandboxControls: runtime !== 'production', officialPreview: officialEnabled },
   };
 }
 
