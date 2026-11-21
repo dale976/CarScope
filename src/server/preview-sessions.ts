@@ -1,20 +1,16 @@
 import { randomUUID } from 'node:crypto';
+import type { DataMode, VehiclePreview } from '../shared/preview';
 import type { BuyingReport } from '../shared/report';
-import type { DataMode } from '../shared/preview';
 import { AppError } from './errors';
-import type { ProviderVehicleDetails } from './provider';
 
 type MockSession = { mode: 'mock'; registration: string; report: BuyingReport };
-type LiveSession = {
-  mode: 'live';
-  registration: string;
-  details: ProviderVehicleDetails;
-  previewData: ProviderVehicleDetails;
-};
-export type NewPreviewSession = MockSession | LiveSession;
+type OfficialSession = { mode: 'official'; registration: string; preview: VehiclePreview };
+export type NewPreviewSession = MockSession | OfficialSession;
 export type PreviewSession = NewPreviewSession & {
   createdAt: number;
   inflight?: Promise<BuyingReport>;
+  result?: BuyingReport;
+  failed?: { error: unknown };
 };
 
 export interface PreviewSessionStore {
@@ -42,7 +38,7 @@ export function createMemoryPreviewSessionStore(
         410,
         'Preview expired or unavailable. Identify the vehicle again.',
       );
-    if (now() - session.createdAt > ttlMs) {
+    if (now() - session.createdAt >= ttlMs) {
       sessions.delete(id);
       throw new AppError('PREVIEW_EXPIRED', 410, 'Preview expired. Identify the vehicle again.');
     }
@@ -57,20 +53,29 @@ export function createMemoryPreviewSessionStore(
 
   return {
     async create(session) {
+      for (const [id, entry] of sessions) if (now() - entry.createdAt >= ttlMs) sessions.delete(id);
       const id = randomUUID();
-      sessions.set(id, { ...session, createdAt: now() });
+      sessions.set(id, {
+        ...session,
+        ...(session.mode === 'official' ? { preview: { ...session.preview, previewId: id } } : {}),
+        createdAt: now(),
+      } as PreviewSession);
       return id;
     },
     async complete(id, mode, registration, work) {
       const session = read(id, mode, registration);
+      if (session.result) return session.result;
+      if (session.failed) throw session.failed.error;
       if (session.inflight) return session.inflight;
       const pending = work(session).then(
         (report) => {
-          sessions.delete(id);
+          if (session.mode === 'official') session.result = report;
+          else sessions.delete(id);
           return report;
         },
         (error) => {
           session.inflight = undefined;
+          if (session.mode === 'official') session.failed = { error };
           throw error;
         },
       );

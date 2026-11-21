@@ -1,8 +1,11 @@
 import { useState } from 'react';
-import type { VehicleDetail, BuyingReport } from '../shared/report';
+import type { BuyingReport, VehicleDetail } from '../shared/report';
 import { HistoryView } from './HistoryView';
+
 export { buildTimeline } from '../shared/history';
-import { dateLabel } from '../shared/history';
+
+import { formatEvidenceDate } from '../shared/date';
+
 type Mot = NonNullable<BuyingReport['evidence']>['mot'];
 export function VehiclePortrait({ detail, name }: { detail: VehicleDetail; name: string }) {
   const [failed, setFailed] = useState(false);
@@ -87,7 +90,7 @@ export function VehicleFacts({ detail }: { detail: VehicleDetail }) {
           <dl>
             <div>
               <dt>First registered</dt>
-              <dd>{dateLabel(detail.registered)}</dd>
+              <dd>{formatEvidenceDate(detail.registered)}</dd>
             </div>
             <div>
               <dt>Current colour</dt>

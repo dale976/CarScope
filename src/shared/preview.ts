@@ -1,23 +1,51 @@
 import { formatUkDate } from './date';
 import type { BuyingReport } from './report';
 
-export type DataMode = 'mock' | 'live';
-export type ClientRuntimeConfig = { sandboxControls: boolean };
+// `live` is retained for isolated legacy VDG helpers, never accepted by the preview API.
+export type DataMode = 'mock' | 'official' | 'live';
+export type ReportAction = 'mock' | 'sandbox' | 'unavailable';
+export type ClientRuntimeConfig = { dataMode: 'mock' | 'connected'; reportAction: ReportAction };
+export type PreviewMotTest = {
+  completedDate: string;
+  expiryDate?: string;
+  result: 'pass' | 'fail' | 'unknown';
+  odometer: { value: number | null; unit?: string; resultType?: string };
+  defects?: { type?: string; text: string; dangerous?: boolean }[];
+};
+export type SourceState =
+  | 'available'
+  | 'unavailable'
+  | 'not-found'
+  | 'invalid'
+  | 'unconfigured'
+  | 'busy';
 export type VehiclePreview = {
   previewId: string;
   registration: string;
   source: DataMode;
   vehicle: {
     name: string;
+    make?: string;
+    model?: string;
     year: number | null;
     registered?: string;
+    firstRegistered?: string;
+    engineCapacity?: number;
+    co2Emissions?: number;
+    euroStatus?: string;
+    typeApproval?: string;
+    wheelplan?: string;
+    markedForExport?: boolean;
+    markedAsScrapped?: boolean;
+    dateOfLastV5CIssued?: string;
+    revenueWeight?: number;
     fuelType?: string;
     transmission?: string;
     colour?: string;
     image?: { url: string; expires?: string };
   };
   mot?: {
-    status: 'valid' | 'expired' | 'failed' | 'exempt' | 'unavailable' | 'not-yet-due';
+    status: 'valid' | 'expired' | 'failed' | 'exempt' | 'unavailable' | 'not-yet-due' | 'not-valid';
     expiry?: string;
     dueDate?: string;
     sourceDate?: string;
@@ -28,6 +56,15 @@ export type VehiclePreview = {
     sourceDate?: string;
   };
   coverage: { motRecordCount?: number; ukRecordStart?: string; message: string };
+  recordedMileage?: { value: number; unit: string; date: string };
+  motHistory?: PreviewMotTest[];
+  official?: {
+    testData: boolean;
+    retrievedAt: string;
+    sources: { dvla: SourceState; dvsa: SourceState };
+    notes: string[];
+    motSource?: 'DVLA' | 'DVSA';
+  };
 };
 
 type StatusFact = { status: string; expiry?: string; dueDate?: string; sourceDate?: string };

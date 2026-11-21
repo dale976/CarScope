@@ -20,7 +20,7 @@ test('health is local and never invokes a provider', async () => {
   let providerCalls = 0;
   const api = createReportApi({
     config: readConfig({}),
-    identifyLive: async () => {
+    identifyOfficial: async () => {
       providerCalls++;
       throw new Error('must not run');
     },

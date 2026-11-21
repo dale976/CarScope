@@ -1,4 +1,4 @@
-import { formatUkDate } from './date';
+import { formatEvidenceDate, evidenceTimestamp } from './date';
 import type { VehicleDetail, MotRecord, HistoryEvent } from './report';
 export function reportAnchor(value: string) {
   return value
@@ -7,7 +7,7 @@ export function reportAnchor(value: string) {
     .replace(/(^-|-$)/g, '');
 }
 export function dateLabel(value: string) {
-  return formatUkDate(value) ?? 'Date unavailable';
+  return formatEvidenceDate(value);
 }
 export function motTitle(m: MotRecord) {
   return m.result === 'pass'
@@ -25,11 +25,15 @@ export function buildTimeline(
   events: HistoryEvent[] = [],
 ): HistoryEvent[] {
   return [
-    {
-      date: detail.registered,
-      title: 'First registered',
-      text: 'UK registration date in the supplied record.',
-    },
+    ...(detail.registered && dateLabel(detail.registered) !== 'Date unavailable'
+      ? [
+          {
+            date: detail.registered,
+            title: 'First registered',
+            text: 'UK registration date in the supplied record.',
+          },
+        ]
+      : []),
     ...detail.keepers.map((k) => ({
       date: k.date,
       title: 'Registered keeper change',
@@ -44,7 +48,7 @@ export function buildTimeline(
       mot: m,
     })),
     ...events,
-  ].sort((a, b) => a.date.localeCompare(b.date));
+  ].sort((a, b) => evidenceTimestamp(a.date) - evidenceTimestamp(b.date));
 }
 export function mileageReadings(mot: MotRecord[], recent = false) {
   const valid = mot
@@ -53,11 +57,11 @@ export function mileageReadings(mot: MotRecord[], recent = false) {
         m.mileage !== null &&
         Number.isFinite(m.mileage) &&
         m.mileage >= 0 &&
-        Number.isFinite(Date.parse(m.date)),
+        Number.isFinite(evidenceTimestamp(m.date)),
     )
-    .sort((a, b) => a.date.localeCompare(b.date));
+    .sort((a, b) => evidenceTimestamp(a.date) - evidenceTimestamp(b.date));
   if (!recent || !valid.length) return valid;
-  const cutoff = new Date(valid[valid.length - 1]?.date);
+  const cutoff = new Date(evidenceTimestamp(valid[valid.length - 1]!.date));
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - 5);
-  return valid.filter((m) => Date.parse(m.date) >= cutoff.getTime());
+  return valid.filter((m) => evidenceTimestamp(m.date) >= cutoff.getTime());
 }

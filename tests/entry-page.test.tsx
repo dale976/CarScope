@@ -11,18 +11,17 @@ describe('buying report entry page', () => {
     expect(html).toContain('class="brand-scope">SCOPE');
     expect(html).not.toContain('class="brand-symbol"');
   });
-  test('starts in mock mode with four optional examples and no sandbox controls', () => {
+  test('mock launch has examples but no source selector', () => {
     const html = renderToStaticMarkup(<App />);
-    expect(html).toContain('aria-pressed="true">Mock');
-    expect(html).toContain('aria-pressed="false">Live');
-    expect(html.match(/class="example-vehicle"/g)).toHaveLength(4);
-    expect(html).not.toContain('100 supplier calls');
-    expect(html).not.toContain('30 registrations');
-    expect(html).not.toContain('Sandbox prototype');
-  });
-  test('production runtime hides the development data-source selector', () => {
-    const html = renderToStaticMarkup(<App runtimeConfig={{ sandboxControls: false }} />);
     expect(html).not.toContain('aria-label="Data source"');
-    expect(html).not.toContain('>Live</button>');
+    expect(html.match(/class="example-vehicle"/g)).toHaveLength(4);
+  });
+  test('connected launch has no mock examples or source controls', () => {
+    const html = renderToStaticMarkup(
+      <App runtimeConfig={{ dataMode: 'connected', reportAction: 'sandbox' }} />,
+    );
+    expect(html).not.toContain('aria-label="Data source"');
+    expect(html).not.toContain('class="example-vehicle"');
+    expect(html).toContain('no payment');
   });
 });

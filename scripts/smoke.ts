@@ -1,8 +1,9 @@
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sampleReport } from '../fixtures/sample-report';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import { join, resolve } from 'node:path';
-import { tmpdir } from 'node:os';
+
 const port = 49000 + Math.floor(Math.random() * 10000);
 const ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const base = new URL(`http://127.0.0.1:${port}`);
@@ -23,8 +24,12 @@ const child = Bun.spawn([process.execPath, 'index.js'], {
     ...process.env,
     CARSCOPE_ROOT: fixtureRoot,
     HOST: '127.0.0.1',
+    PORT: String(port),
     REPORT_PORT: String(port),
     NODE_ENV: 'production',
+    OFFICIAL_PREVIEW_ENABLED: 'false',
+    CARSCOPE_DATA_MODE: 'mock',
+    VDG_SANDBOX_ENABLED: 'false',
   },
   stdout: 'ignore',
   stderr: 'pipe',
@@ -87,23 +92,68 @@ try {
   });
   if (report.kind !== 'sandbox-example' || report.registration !== 'LD17VAE')
     throw new Error('Unexpected generated mock report');
-  if (process.env.VDG_SMOKE_LIVE === 'true') {
-    const liveRegistration = process.argv[2];
-    if (!liveRegistration)
-      throw new Error('Pass a registration containing A when VDG_SMOKE_LIVE=true.');
-    console.log('This action makes 4 supplier calls: 1 preview + 3 report');
-    const livePreview = await post('/api/report-preview', {
-      mode: 'live',
-      registration: liveRegistration,
+  for (const [path, mode, expectedStatus] of [
+    ['/api/report-preview', 'official', 422],
+    ['/api/report-preview', 'live', 422],
+    ['/api/report-generate', 'official', 422],
+    ['/api/report-generate', 'live', 422],
+  ] as const) {
+    const response = await fetch(new URL(path, base), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ mode, registration: 'LD17VAE' }),
     });
-    await post('/api/report-generate', {
-      mode: 'live',
-      registration: liveRegistration,
-      previewId: livePreview.previewId,
-    });
+    if (response.status !== expectedStatus)
+      throw new Error(`Unexpected production boundary for ${path}/${mode}: ${response.status}`);
   }
   if ((await fetch(new URL('/missing', base))).status !== 404)
     throw new Error('Missing route should be 404');
+  // Execute the compiled entry directly with a conflicting runtime setting. A
+  // production artifact must never permit unpaid sandbox reports, even without
+  // the start wrapper. No real credentials or provider requests are used here.
+  const guardBase = new URL(`http://127.0.0.1:${port + 1}`);
+  const guard = Bun.spawn([process.execPath, '--no-env-file', 'index.js'], {
+    cwd: resolve(ROOT, 'dist'),
+    env: {
+      HOST: '127.0.0.1',
+      PORT: String(port + 1),
+      NODE_ENV: 'development',
+      CARSCOPE_DATA_MODE: 'connected',
+      VDG_SANDBOX_ENABLED: 'true',
+      VDG_API_KEY: 'offline-smoke-key',
+    },
+    stdout: 'ignore',
+    stderr: 'pipe',
+  });
+  try {
+    let config: { reportAction?: string } | undefined;
+    for (let i = 0; i < 80; i++) {
+      try {
+        const response = await fetch(new URL('/api/runtime-config', guardBase));
+        if (response.ok) {
+          config = await response.json();
+          break;
+        }
+      } catch {
+        /* Wait for local startup only. */
+      }
+      await Bun.sleep(50);
+    }
+    if (config?.reportAction !== 'unavailable')
+      throw new Error(
+        'Compiled production entry must deny sandbox reports even with NODE_ENV=development.',
+      );
+    const denied = await fetch(new URL('/api/report-generate', guardBase), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ registration: 'YJ22ACU' }),
+    });
+    if (denied.status !== 409)
+      throw new Error('Compiled entry did not deny unpaid sandbox generation.');
+  } finally {
+    guard.kill();
+    await guard.exited;
+  }
   console.log(
     'Report smoke passed: built route/assets and staged Mock journey, with no external calls.',
   );

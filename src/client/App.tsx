@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react';
-import { RegistrationStep } from './journey/RegistrationStep';
-import { PreviewStep } from './journey/PreviewStep';
-import { ReportStep } from './journey/ReportStep';
-import type { BuyingReport } from '../shared/report';
+import { type FormEvent, useEffect, useRef, useState } from 'react';
 import type { ClientRuntimeConfig, DataMode, VehiclePreview } from '../shared/preview';
+import type { BuyingReport } from '../shared/report';
+import { PreviewStep } from './journey/PreviewStep';
+import { RegistrationStep } from './journey/RegistrationStep';
+import { ReportStep } from './journey/ReportStep';
+import { createRequestGate } from './journey/request-gate';
 
 type Stage = 'registration' | 'identifying' | 'preview' | 'generating' | 'report';
 const examples = [
@@ -27,35 +28,32 @@ async function post<T>(path: string, value: unknown): Promise<T> {
 }
 
 export function App({
-  runtimeConfig = { sandboxControls: true },
+  runtimeConfig = { dataMode: 'mock', reportAction: 'mock' },
 }: {
   runtimeConfig?: ClientRuntimeConfig;
 }) {
   const [stage, setStage] = useState<Stage>('registration');
-  const [mode, setMode] = useState<DataMode>('mock');
+  const mode: DataMode = runtimeConfig.dataMode === 'connected' ? 'official' : 'mock';
   const [registration, setRegistration] = useState('');
   const [preview, setPreview] = useState<VehiclePreview | null>(null);
   const [report, setReport] = useState<BuyingReport | null>(null);
   const [error, setError] = useState('');
   const heading = useRef<HTMLDivElement>(null);
+  const requests = useRef(createRequestGate());
   const busy = stage === 'identifying' || stage === 'generating';
   useEffect(() => {
     heading.current?.focus();
     window.scrollTo({ top: 0, behavior: 'instant' });
   }, []);
   function clearResults() {
+    requests.current.invalidate();
     setPreview(null);
     setReport(null);
     setError('');
     setStage('registration');
   }
-  function chooseMode(value: DataMode) {
-    if (value === mode) return;
-    setMode(value);
-    setRegistration('');
-    clearResults();
-  }
   function changeRegistration(value: string) {
+    requests.current.invalidate();
     setRegistration(value.toUpperCase());
     if (preview || report) {
       setPreview(null);
@@ -69,37 +67,42 @@ export function App({
     setError('');
     setReport(null);
     setStage('identifying');
-    try {
-      const value = await post<VehiclePreview>('/api/report-preview', { mode, registration });
-      setPreview(value);
-      setRegistration(value.registration);
-      setStage('preview');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to identify the vehicle.');
-      setStage('registration');
-    }
+    await requests.current.run(
+      () => post<VehiclePreview>('/api/report-preview', { registration }),
+      (value) => {
+        setPreview(value);
+        setRegistration(value.registration);
+        setStage('preview');
+      },
+      (e) => {
+        setError(e instanceof Error ? e.message : 'Unable to identify the vehicle.');
+        setStage('registration');
+      },
+    );
   }
   async function generate() {
     if (report) {
       setStage('report');
       return;
     }
-    if (!preview) return;
+    if (!preview || runtimeConfig.reportAction === 'unavailable' || preview.source !== mode) return;
     setError('');
     setStage('generating');
-    try {
-      setReport(
-        await post<BuyingReport>('/api/report-generate', {
-          mode,
+    await requests.current.run(
+      () =>
+        post<BuyingReport>('/api/report-generate', {
           registration: preview.registration,
           previewId: preview.previewId,
         }),
-      );
-      setStage('report');
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unable to prepare the report.');
-      setStage('preview');
-    }
+      (value) => {
+        setReport(value);
+        setStage('report');
+      },
+      (e) => {
+        setError(e instanceof Error ? e.message : 'Unable to prepare the report.');
+        setStage('preview');
+      },
+    );
   }
   return (
     <>
@@ -114,18 +117,14 @@ export function App({
           </span>
         </a>
         <span className="product-name">Vehicle buying reports</span>
-        {runtimeConfig.sandboxControls && (
-          <div className="mode-toggle" role="group" aria-label="Data source">
-            <button type="button" aria-pressed={mode === 'mock'} onClick={() => chooseMode('mock')}>
-              Mock
-            </button>
-            <button type="button" aria-pressed={mode === 'live'} onClick={() => chooseMode('live')}>
-              Live
-            </button>
-          </div>
-        )}
       </header>
       <main id="main">
+        {runtimeConfig.reportAction === 'sandbox' && (
+          <p className="preview-test-notice" role="note">
+            Sandbox report testing · no payment is taken. VDG test data may be up to 12 months old
+            and is not for purchasing decisions.
+          </p>
+        )}
         <nav aria-label="Report progress" className="journey-progress">
           <span
             aria-current={stage === 'registration' || stage === 'identifying' ? 'step' : undefined}
@@ -153,6 +152,7 @@ export function App({
             <PreviewStep
               preview={preview}
               mode={mode}
+              reportAction={runtimeConfig.reportAction}
               busy={busy}
               error={error}
               onBack={clearResults}

@@ -1,4 +1,5 @@
 import { useState, useId } from 'react';
+import { evidenceTimestamp } from '../shared/date';
 import type { VehicleDetail, MotRecord, HistoryEvent } from '../shared/report';
 import {
   buildTimeline,
@@ -71,11 +72,11 @@ export function HistoryView({
   const selectedTest = readings.find((m) => m.date === selected) ?? readings[readings.length - 1];
   const first = readings[0],
     last = readings[readings.length - 1];
-  const min = first ? Date.parse(first.date) : 0,
-    max = last ? Date.parse(last.date) : 1;
+  const min = first ? evidenceTimestamp(first.date) : 0,
+    max = last ? evidenceTimestamp(last.date) : 1;
   const top = Math.max(10000, ...readings.map((m) => m.mileage!));
   const x = (m: MotRecord) =>
-    max === min ? 340 : 65 + ((Date.parse(m.date) - min) / (max - min)) * 570;
+    max === min ? 340 : 65 + ((evidenceTimestamp(m.date) - min) / (max - min)) * 570;
   const y = (m: MotRecord) => 210 - (m.mileage! / top) * 170;
   const latestKeeper = detail
     ? [...detail.keepers].sort((a, b) => b.date.localeCompare(a.date))[0]
@@ -83,7 +84,10 @@ export function HistoryView({
   const keeperCount = detail?.keepers.length ?? 0;
   const registeredYear = detail?.registered ? Number(detail.registered.slice(0, 4)) : undefined;
   const likelyImported =
-    vehicleYear !== undefined && registeredYear !== undefined && registeredYear - vehicleYear > 1;
+    vehicleYear !== undefined &&
+    vehicleYear > 0 &&
+    registeredYear !== undefined &&
+    registeredYear - vehicleYear > 1;
   return (
     <section className="history-section">
       <p className="eyebrow">The recorded story</p>

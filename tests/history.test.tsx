@@ -3,7 +3,21 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { VehicleStory, buildTimeline } from '../src/client/VehicleStory';
 import { ReportView } from '../src/client/report/ReportView';
 import { sampleReport } from '../fixtures/sample-report';
+import { dateLabel, mileageReadings } from '../src/shared/history';
 const detail = { registered: '2005-01-01', keepers: [] };
+test('timeline omits missing registration and preserves month-level registration precision', () => {
+  expect(buildTimeline({ registered: '', keepers: [] }, [])).toEqual([]);
+  expect(dateLabel(buildTimeline({ registered: '2022-05', keepers: [] }, [])[0]!.date)).toBe(
+    'May 2022',
+  );
+});
+test('offset-bearing MOT records are ordered by instant rather than text', () => {
+  const records = [
+    { date: '2026-11-20T10:00:00+02:00', mileage: 100, expiry: null },
+    { date: '2026-11-20T09:30:00Z', mileage: 110, expiry: null },
+  ];
+  expect(mileageReadings(records).map((record) => record.mileage)).toEqual([100, 110]);
+});
 const mot = [
   {
     date: '2024-02-01T10:00:00Z',

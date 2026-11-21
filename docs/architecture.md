@@ -8,7 +8,7 @@ CarScope is one Bun application with a React browser client and a same-origin HT
 
 ```text
 React client ── same-origin JSON ──> Bun API ──> mock report files
-                                      └───────> supplier sandbox after an explicit action
+                                      └───────> DVLA + DVSA after explicit free-preview submission
 ```
 
 `PORT` is canonical and defaults to 9000. `REPORT_PORT` remains a temporary compatibility fallback. A production server bound beyond loopback requires an exact `PUBLIC_ORIGIN`, which is also used for mutation-origin checks. The browser receives only a small runtime configuration object and never receives credentials.
@@ -23,11 +23,30 @@ React client ── same-origin JSON ──> Bun API ──> mock report files
 
 ## Request flow
 
-`POST /api/report-preview` validates the registration and mode. Mock mode resolves an allowlisted local example. Supplier mode performs the one preview-package request only after the user submits. The response contains a normalized public preview and an opaque preview ID.
+The server selects sources using `CARSCOPE_DATA_MODE=mock|connected`, independently
+of `NODE_ENV` and `DVLA_ENVIRONMENT`. There is no UI source toggle. Runtime config
+exposes only the configured data mode and report action. A missing config response
+stops the form; browser input cannot override the server's mode.
 
-`POST /api/report-generate` requires the matching preview ID, registration and mode. The server-bound session expires after 30 minutes, coalesces concurrent completion attempts and is removed after successful generation. Completion requests optional provenance, valuation and tyre data concurrently. Failed optional sources are reported as missing evidence and are never translated into a clear check.
+`POST /api/report-preview` accepts a registration and creates an opaque 30-minute
+session. Mock uses local data. Connected mode calls DVLA/DVSA only, validates and
+retains normalized official evidence, and never invokes VDG. Connected previews
+are available in production runtime; UAT records are clearly marked as test data.
+Legacy mismatching mode requests are rejected before provider work.
 
-The current session store is intentionally in memory. A durable, shared implementation must replace it before running multiple server instances or accepting payments.
+`POST /api/report-generate` requires a matching session and registration. Mock
+completes locally. Connected sandbox reports require explicit configuration and
+are denied in production until verified payment/production fulfilment exists.
+The test-report action requests VDICheck, validates returned identity where present,
+then requests ValuationDetails and TyreDetails concurrently. No CarScopeFree request
+is made. Official MOT/tax/identity evidence is reused where available and retained
+alongside clearly identified VDG sandbox enrichment. Missing/malformed provenance
+stays not checked; optional failures produce gaps. There are no automatic retries.
+
+Concurrent completion coalesces. Successful official-session reports are cached
+until expiry, and failed official attempts remain failed to prevent repeated partial
+spend. Sessions are in-memory and restart-sensitive: durable payment/report records
+and shared idempotency are required for commercial fulfilment.
 
 ## HTTP and operational policy
 
@@ -40,7 +59,7 @@ The current session store is intentionally in memory. A durable, shared implemen
 
 ## Configuration policy
 
-Configuration is parsed once by `src/server/config.ts`. Sandbox mode requires a server-side key. Production hides the development data-source selector. Non-loopback production startup fails closed without a valid public origin.
+Configuration is parsed once by `src/server/config.ts`. Official mode uses server-only DVLA/DVSA credentials. Missing sources remain unconfigured and do not prevent offline startup. The server chooses sources at launch. Production permits connected previews but rejects sandbox report generation. Non-loopback production startup fails closed without a valid public origin.
 
 The application remains usable without an `.env` file. `.env` and private `.local/` examples are ignored; `.env.example` contains names and safe defaults only.
 

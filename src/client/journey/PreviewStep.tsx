@@ -1,9 +1,10 @@
-import type { DataMode, VehiclePreview } from '../../shared/preview';
+import type { DataMode, ReportAction, VehiclePreview } from '../../shared/preview';
 import { VehiclePreviewCard } from '../VehiclePreview';
 
 export function PreviewStep({
   preview,
   mode,
+  reportAction,
   busy,
   error,
   onBack,
@@ -11,6 +12,7 @@ export function PreviewStep({
 }: {
   preview: VehiclePreview;
   mode: DataMode;
+  reportAction?: ReportAction;
   busy: boolean;
   error: string;
   onBack: () => void;
@@ -21,6 +23,7 @@ export function PreviewStep({
       <VehiclePreviewCard
         preview={preview}
         mode={mode}
+        reportAction={reportAction}
         busy={busy}
         onBack={onBack}
         onGenerate={onGenerate}

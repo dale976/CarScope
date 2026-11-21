@@ -1,3 +1,5 @@
+import type { VehiclePreview } from './preview';
+
 export interface VehicleDetail {
   registered: string;
   keepers: { date: string; previous: number }[];
@@ -68,14 +70,15 @@ export interface BuyingReport {
   };
   historyEvents?: HistoryEvent[];
   motStatus?: {
-    status: 'valid' | 'expired' | 'failed' | 'exempt' | 'unavailable';
+    status: 'valid' | 'expired' | 'failed' | 'exempt' | 'unavailable' | 'not-valid';
     expiry?: string;
-    source: 'supplier' | 'derived';
+    source: 'supplier' | 'derived' | 'official';
   };
   tax?: {
     status?: 'taxed' | 'untaxed' | 'sorn' | 'exempt' | 'unavailable';
     dueDate?: string;
     date?: string;
+    officialLookupDate?: string;
     co2?: number;
     band?: string;
     rates: { label: string; amount: number }[];
@@ -86,6 +89,8 @@ export interface BuyingReport {
   missingData?: string;
 
   kind: 'fictional-sample' | 'sandbox-example';
+  testReport?: boolean;
+  officialPreview?: VehiclePreview;
   evidence?: {
     mot: MotRecord[];
     valuation?: { mileage: number; date: string; figures: { label: string; value: number }[] };

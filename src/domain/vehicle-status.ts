@@ -1,8 +1,18 @@
+import { formatEvidenceDate } from '../shared/date';
 import { statusCopy, type VehiclePreview } from '../shared/preview';
 import type { BuyingReport } from '../shared/report';
 
 type MotStatus = NonNullable<VehiclePreview['mot']>;
 type TaxStatus = NonNullable<VehiclePreview['tax']>;
+
+export function buildReportTaxDisplay(report: BuyingReport): VehicleStatusDisplay {
+  const display = buildTaxDisplay(report.tax);
+  if (report.officialPreview?.official?.sources.dvla === 'available')
+    display.detail = report.tax?.dueDate
+      ? `Tax due ${formatEvidenceDate(report.tax.dueDate)}`
+      : 'No tax due date returned';
+  return display;
+}
 
 export type VehicleStatusDisplay = {
   label: string;
@@ -15,6 +25,7 @@ export function buildMotDisplay(status: MotStatus | undefined): VehicleStatusDis
     ? {
         valid: 'MOT valid',
         expired: 'MOT expired',
+        'not-valid': 'MOT not valid',
         failed: 'Latest MOT failed',
         exempt: 'MOT exempt',
         unavailable: 'MOT status unavailable',

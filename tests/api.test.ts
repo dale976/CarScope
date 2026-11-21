@@ -1,8 +1,11 @@
 import { expect, test } from 'bun:test';
 import { createReportApi } from '../src/server/api';
 import { readConfig } from '../src/server/config';
+import { createDvlaClient } from '../src/server/dvla/client';
+import { createDvsaClient } from '../src/server/dvsa/client';
+import { createOfficialPreview } from '../src/server/official-preview';
+import type { VehiclePreview } from '../src/shared/preview';
 import type { BuyingReport } from '../src/shared/report';
-import type { ProviderVehicleDetails } from '../src/server/provider';
 
 const report = {
   kind: 'sandbox-example',
@@ -49,7 +52,7 @@ test('runtime config endpoint exposes only client-safe controls', async () => {
   const response = await api(new Request('http://127.0.0.1/api/runtime-config'));
   const text = await response.text();
   expect(response.status).toBe(200);
-  expect(JSON.parse(text)).toEqual({ sandboxControls: true });
+  expect(JSON.parse(text)).toEqual({ dataMode: 'mock', reportAction: 'mock' });
   expect(text).not.toContain('must-not-leak');
 });
 test('spending endpoints require POST, JSON and same origin', async () => {
@@ -90,18 +93,17 @@ test('API maps malformed requests to stable typed errors', async () => {
   expect((await invalidRegistration.json()).code).toBe('INVALID_REGISTRATION');
 });
 
-test('live sandbox restrictions return a correctable validation error', async () => {
+test('legacy VDG preview and generation modes are rejected even with a VDG key', async () => {
   const api = createReportApi({
     config: readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' }),
   });
-  const response = await api(
-    post('/api/report-preview', { mode: 'live', registration: 'DF74FPX' }),
-  );
-  expect(response.status).toBe(422);
-  expect(await response.json()).toEqual({
-    error: 'The development service can only search registrations containing the letter A.',
-    code: 'SANDBOX_REGISTRATION_RESTRICTED',
-  });
+  for (const path of ['/api/report-preview', '/api/report-generate']) {
+    const response = await api(
+      post(path, { mode: 'live', registration: 'YJ22ACU', previewId: 'old' }),
+    );
+    expect(response.status).toBe(422);
+    expect((await response.json()).code).toBe('INVALID_MODE');
+  }
 });
 
 test('unexpected API failures return a generic response', async () => {
@@ -124,7 +126,7 @@ test('mock preview stays local and exposes only the public projection', async ()
   let liveCalls = 0;
   const api = createReportApi({
     loadMock: () => report,
-    identifyLive: async () => {
+    identifyOfficial: async () => {
       liveCalls++;
       throw new Error('must not run');
     },
@@ -141,72 +143,86 @@ test('mock preview stays local and exposes only the public projection', async ()
     expect(JSON.stringify(body)).not.toContain(secret);
 });
 
-test('live preview invokes identification once and generation invokes completion once', async () => {
-  let identifyCalls = 0,
-    completeCalls = 0;
+test('official preview is separate from paid completion and never creates a paid session', async () => {
+  let calls = 0;
   const api = createReportApi({
-    config: readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' }),
-    identifyLive: async (registration) => {
-      identifyCalls++;
+    config: readConfig({ OFFICIAL_PREVIEW_ENABLED: 'true', DVLA_API_KEY: 'key' }),
+    identifyOfficial: async (registration) => {
+      calls++;
       return {
-        preview: {
-          registration,
-          source: 'live',
-          vehicle: { name: 'Tesla Model X 75D', year: 2017 },
-          coverage: { message: 'Detailed history is checked in the complete report' },
-        },
-        details: { VehicleDetails: { private: true } } as ProviderVehicleDetails,
-        previewData: { VehicleTaxDetails: { private: true } } as ProviderVehicleDetails,
-      };
-    },
-    completeLive: async () => {
-      completeCalls++;
-      return report;
+        registration,
+        previewId: '',
+        source: 'official',
+        vehicle: { name: 'LOTUS EXIGE', year: 2022 },
+        coverage: { message: '2 MOT tests returned' },
+      } as VehiclePreview;
     },
   });
-  const previewResponse = await api(
-    post('/api/report-preview', { mode: 'live', registration: 'LD17VAE' }),
+  const response = await api(
+    post('/api/report-preview', { mode: 'official', registration: 'yj22 acu' }),
   );
-  const preview = await previewResponse.json();
-  expect(identifyCalls).toBe(1);
-  expect(JSON.stringify(preview)).not.toContain('private');
-  const result = await api(
-    post('/api/report-generate', {
-      mode: 'live',
-      registration: 'LD17VAE',
-      previewId: preview.previewId,
-    }),
+  expect(response.status).toBe(200);
+  expect((await response.json()).vehicle.name).toBe('LOTUS EXIGE');
+  expect(calls).toBe(1);
+  const completion = await api(
+    post('/api/report-generate', { mode: 'official', registration: 'YJ22ACU' }),
   );
-  expect(result.status).toBe(200);
-  expect(completeCalls).toBe(1);
+  expect(completion.status).toBe(409);
+  expect((await completion.json()).code).toBe('PAID_REPORT_UNAVAILABLE');
+  expect(calls).toBe(1);
 });
 
-test('invalid or mismatched preview IDs spend no completion calls', async () => {
-  let completeCalls = 0;
-  const api = createReportApi({
-    loadMock: () => report,
-    completeLive: async () => {
-      completeCalls++;
-      return report;
-    },
-  });
-  const invalid = await api(
-    post('/api/report-generate', { mode: 'live', registration: 'LD17VAE', previewId: 'missing' }),
-  );
-  expect(invalid.status).toBe(410);
-  expect(completeCalls).toBe(0);
+test('browser data-mode spoofing cannot override server launch settings', async () => {
+  for (const [dataMode, mode] of [
+    ['mock', 'official'],
+    ['connected', 'mock'],
+  ]) {
+    let calls = 0;
+    const api = createReportApi({
+      config: readConfig({ CARSCOPE_DATA_MODE: dataMode }),
+      identifyOfficial: async () => {
+        calls++;
+        throw new Error('must not run');
+      },
+      loadMock: () => {
+        calls++;
+        return report;
+      },
+    });
+    expect((await api(post('/api/report-preview', { mode, registration: 'YJ22ACU' }))).status).toBe(
+      422,
+    );
+    expect(calls).toBe(0);
+  }
+});
+
+test('invalid or mismatched mock preview IDs cannot generate reports', async () => {
+  const api = createReportApi({ loadMock: () => report });
+  expect(
+    (
+      await api(
+        post('/api/report-generate', {
+          mode: 'mock',
+          registration: 'LD17VAE',
+          previewId: 'missing',
+        }),
+      )
+    ).status,
+  ).toBe(410);
   const preview = await (
     await api(post('/api/report-preview', { mode: 'mock', registration: 'LD17VAE' }))
   ).json();
-  const mismatch = await api(
-    post('/api/report-generate', {
-      mode: 'mock',
-      registration: 'SL60AUC',
-      previewId: preview.previewId,
-    }),
-  );
-  expect(mismatch.status).toBe(409);
-  expect(completeCalls).toBe(0);
+  expect(
+    (
+      await api(
+        post('/api/report-generate', {
+          mode: 'mock',
+          registration: 'SL60AUC',
+          previewId: preview.previewId,
+        }),
+      )
+    ).status,
+  ).toBe(409);
 });
 
 test('two rapid generation requests share one completion promise', async () => {
@@ -243,4 +259,169 @@ test('two rapid generation requests share one completion promise', async () => {
   expect((await first).status).toBe(200);
   expect((await second).status).toBe(200);
   expect(loads).toBe(1);
+});
+
+test('combined API journey uses real DVLA/DVSA clients with only official HTTP destinations', async () => {
+  const destinations: string[] = [];
+  const fetcher = async (url: string | URL, init?: RequestInit) => {
+    destinations.push(String(url));
+    const host = new URL(url).hostname;
+    if (host === 'login.microsoftonline.com')
+      return Response.json({ access_token: 'token', expires_in: 3600 });
+    if (host === 'uat.driver-vehicle-licensing.api.gov.uk') {
+      expect(init?.method).toBe('POST');
+      return Response.json({
+        registrationNumber: 'YJ22ACU',
+        make: 'LOTUS',
+        taxStatus: 'Taxed',
+        monthOfFirstRegistration: '2022-05',
+      });
+    }
+    if (host === 'history.mot.api.gov.uk')
+      return Response.json({
+        registration: 'YJ22ACU',
+        make: 'LOTUS',
+        model: 'EXIGE',
+        motTests: [
+          {
+            completedDate: '2026-04-24T12:00:00',
+            testResult: 'PASSED',
+            expiryDate: '2027-05-10',
+            odometerValue: '8541',
+            odometerUnit: 'mi',
+            odometerResultType: 'READ',
+            defects: [{ type: 'ADVISORY', text: 'Tyre worn' }],
+          },
+        ],
+      });
+    throw new Error('Unexpected supplier destination');
+  };
+  const dvla = createDvlaClient({ environment: 'development', apiKey: 'dvla-secret' }, { fetcher });
+  const dvsa = createDvsaClient(
+    {
+      clientId: 'client',
+      clientSecret: 'dvsa-secret',
+      apiKey: 'dvsa-key',
+      scope: 'https://tapi.dvsa.gov.uk/.default',
+      tokenUrl:
+        'https://login.microsoftonline.com/12345678-1234-1234-1234-123456789abc/oauth2/v2.0/token',
+    },
+    { fetcher },
+  );
+  const api = createReportApi({
+    config: readConfig({ OFFICIAL_PREVIEW_ENABLED: 'true' }),
+    identifyOfficial: createOfficialPreview({
+      dvla: dvla.lookup,
+      dvsa: dvsa.lookup,
+      testData: true,
+    }),
+  });
+  const response = await api(
+    post('/api/report-preview', { mode: 'official', registration: 'YJ22 ACU' }),
+  );
+  const value = await response.json();
+  expect(response.status).toBe(200);
+  expect(value.vehicle.name).toBe('LOTUS EXIGE');
+  expect(value.tax.status).toBe('taxed');
+  expect(value.motHistory[0].defects[0].text).toBe('Tyre worn');
+  expect(value.recordedMileage.value).toBe(8541);
+  expect(value.official.testData).toBe(true);
+  expect(destinations).toHaveLength(3);
+  expect(JSON.stringify(value)).not.toContain('secret');
+  const paid = await api(
+    post('/api/report-generate', {
+      mode: 'official',
+      registration: 'YJ22ACU',
+      previewId: value.previewId,
+    }),
+  );
+  expect(paid.status).toBe(409);
+  expect(destinations).toHaveLength(3);
+});
+
+test('environment-selected connected journey spends only after explicit valid-session generation', async () => {
+  let calls = 0;
+  const api = createReportApi({
+    config: readConfig({
+      CARSCOPE_DATA_MODE: 'connected',
+      VDG_SANDBOX_ENABLED: 'true',
+      VDG_API_KEY: 'secret',
+    }),
+    identifyOfficial: async (registration) => ({
+      registration,
+      previewId: '',
+      source: 'official',
+      vehicle: { name: 'LOTUS EXIGE', year: 2022 },
+      coverage: { message: 'History unavailable' },
+    }),
+    completeOfficial: async () => {
+      calls++;
+      return report;
+    },
+  });
+  const response = await api(post('/api/report-preview', { registration: 'YJ22ACU' }));
+  const preview = await response.json();
+  expect(response.status).toBe(200);
+  expect(preview.previewId.length).toBeGreaterThan(10);
+  expect(calls).toBe(0);
+  expect(
+    (
+      await api(
+        post('/api/report-generate', { registration: 'SL60AUC', previewId: preview.previewId }),
+      )
+    ).status,
+  ).toBe(409);
+  expect(
+    (await api(post('/api/report-generate', { registration: 'YJ22ACU', previewId: 'fake' })))
+      .status,
+  ).toBe(410);
+  expect(calls).toBe(0);
+  const results = await Promise.all([
+    api(post('/api/report-generate', { registration: 'YJ22ACU', previewId: preview.previewId })),
+    api(post('/api/report-generate', { registration: 'YJ22ACU', previewId: preview.previewId })),
+  ]);
+  expect(results.every((result) => result.status === 200)).toBe(true);
+  expect(
+    (
+      await api(
+        post('/api/report-generate', { registration: 'YJ22ACU', previewId: preview.previewId }),
+      )
+    ).status,
+  ).toBe(200);
+  expect(calls).toBe(1);
+});
+
+test('production connected preview works but cannot bypass payment for a sandbox report', async () => {
+  let spent = false;
+  const api = createReportApi({
+    config: readConfig({
+      NODE_ENV: 'production',
+      CARSCOPE_DATA_MODE: 'connected',
+      VDG_SANDBOX_ENABLED: 'true',
+      VDG_API_KEY: 'secret',
+    }),
+    identifyOfficial: async (registration) => ({
+      registration,
+      previewId: '',
+      source: 'official',
+      vehicle: { name: 'LOTUS EXIGE', year: 2022 },
+      coverage: { message: 'History unavailable' },
+    }),
+    completeOfficial: async () => {
+      spent = true;
+      return report;
+    },
+  });
+  const preview = await (
+    await api(post('/api/report-preview', { registration: 'YJ22ACU' }))
+  ).json();
+  expect(preview.source).toBe('official');
+  expect(
+    (
+      await api(
+        post('/api/report-generate', { registration: 'YJ22ACU', previewId: preview.previewId }),
+      )
+    ).status,
+  ).toBe(409);
+  expect(spent).toBe(false);
 });

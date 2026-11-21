@@ -1,6 +1,6 @@
+import { AppError } from '../errors';
 import { asRecord, readBoolean, readRecord } from './guards';
 import type { Fetcher, PackageName, SupplierRecord } from './types';
-import { AppError } from '../errors';
 
 const ENDPOINT = 'https://uk.api.vehicledataglobal.com/r2/lookup';
 
@@ -17,6 +17,7 @@ export async function requestPackage(
   try {
     const response = await fetcher(url, {
       headers: { Accept: 'application/json' },
+      redirect: 'error',
       signal: AbortSignal.timeout(20_000),
     });
     if (!response.ok)

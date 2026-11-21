@@ -1,7 +1,12 @@
+import { formatEvidenceDate } from '../shared/date';
 import { reportAnchor } from '../shared/history';
 import { resolvedMotStatus } from '../shared/preview';
 import type { BuyingReport } from '../shared/report';
-import { buildMotDisplay, buildTaxDisplay, type VehicleStatusDisplay } from './vehicle-status';
+import {
+  buildMotDisplay,
+  buildReportTaxDisplay,
+  type VehicleStatusDisplay,
+} from './vehicle-status';
 
 export interface RecordOverviewModel {
   mot: VehicleStatusDisplay;
@@ -14,6 +19,14 @@ export interface RecordOverviewModel {
 }
 
 export function buildRecordOverview(report: BuyingReport): RecordOverviewModel {
+  const mot = buildMotDisplay(
+    report.officialPreview ? report.motStatus : resolvedMotStatus(report),
+  );
+  const tax = buildReportTaxDisplay(report);
+  if (report.motStatus?.source === 'official')
+    mot.detail = report.motStatus.expiry
+      ? `Recorded MOT expiry ${formatEvidenceDate(report.motStatus.expiry)}`
+      : 'No expiry date established';
   const finance = report.financeRecords?.[0];
   const significant = report.historyEvents?.filter((event) => event.significant).length ?? 0;
   const returned = report.checks.filter((check) => check.status === 'record-returned').length;
@@ -45,8 +58,8 @@ export function buildRecordOverview(report: BuyingReport): RecordOverviewModel {
       })),
   ];
   return {
-    mot: buildMotDisplay(resolvedMotStatus(report)),
-    tax: buildTaxDisplay(report.tax),
+    mot,
+    tax,
     stats: [
       {
         value: supplied,

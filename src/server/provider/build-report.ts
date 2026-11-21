@@ -1,11 +1,12 @@
+import type { VehiclePreview } from '../../shared/preview';
 import type { BuyingReport } from '../../shared/report';
-import type { SupplierRecord } from './types';
 import { normaliseEv } from './normalizers/ev';
 import { normaliseMot } from './normalizers/history';
 import { normaliseProvenance } from './normalizers/provenance';
 import { normaliseTyres } from './normalizers/tyres';
 import { normaliseValuation } from './normalizers/valuation';
 import { normaliseVehicle } from './normalizers/vehicle';
+import type { SupplierRecord } from './types';
 
 export function buildReport(
   registration: string,
@@ -15,9 +16,23 @@ export function buildReport(
   tyreDetails: SupplierRecord | undefined,
   missing: string[],
   provenanceChecked = vdi !== undefined,
+  official?: VehiclePreview,
 ): BuyingReport {
-  const mot = normaliseMot(vdi);
-  const normalisedVehicle = normaliseVehicle(details, vdi, mot);
+  const mot =
+    official?.motHistory?.map((test) => ({
+      date: test.completedDate.replace(' ', 'T'),
+      mileage:
+        test.odometer.unit?.toLowerCase() === 'mi' && test.odometer.resultType === 'READ'
+          ? test.odometer.value
+          : null,
+      expiry: test.expiryDate ?? null,
+      result: test.result === 'unknown' ? undefined : test.result,
+      annotations: test.defects?.map((defect) => ({
+        type: defect.dangerous ? 'DANGEROUS' : (defect.type ?? 'NOTE'),
+        text: defect.text,
+      })),
+    })) ?? normaliseMot(vdi);
+  const normalisedVehicle = normaliseVehicle(details, vdi, mot, official);
   const provenance = normaliseProvenance(vdi);
   const tyres = normaliseTyres(tyreDetails);
   const valuationEvidence = normaliseValuation(valuation);
@@ -39,12 +54,40 @@ export function buildReport(
     financeRecords: provenance.financeRecords,
     ev,
     kind: 'sandbox-example',
+    testReport: official ? true : undefined,
+    officialPreview: official,
     vehicle: normalisedVehicle.vehicle,
     detail: normalisedVehicle.detail,
     historyEvents: provenance.writeOffEvents,
-    motStatus: normalisedVehicle.motStatus,
-    tax: normalisedVehicle.tax,
+    motStatus:
+      official?.official?.motSource && official.mot
+        ? {
+            status: official.mot.status === 'not-yet-due' ? 'unavailable' : official.mot.status,
+            expiry: official.mot.expiry,
+            source: 'official',
+          }
+        : normalisedVehicle.motStatus,
+    tax:
+      official?.official?.sources.dvla === 'available' && official.tax
+        ? {
+            ...normalisedVehicle.tax,
+            status: official.tax.status,
+            dueDate: official.tax.dueDate,
+            officialLookupDate: official.official.retrievedAt.slice(0, 10),
+            co2: official.vehicle.co2Emissions,
+            rates: normalisedVehicle.tax?.rates ?? [],
+          }
+        : normalisedVehicle.tax,
     findings: [
+      ...(provenance.stolen
+        ? [
+            {
+              label: 'A stolen vehicle record was returned',
+              text: 'The supplied record flags this vehicle as stolen. Verify its current status with the relevant authority before proceeding.',
+              source: 'not-checked' as const,
+            },
+          ]
+        : []),
       ...(financeReturned
         ? [
             {
@@ -81,7 +124,7 @@ export function buildReport(
             },
           ]
         : []),
-      ...(!financeReturned && !writeOffReturned && !failed.length
+      ...(!financeReturned && !writeOffReturned && !provenance.stolen && !failed.length
         ? [
             {
               label: 'No headline issue was identified in the supplied records',
