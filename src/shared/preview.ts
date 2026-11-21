@@ -3,7 +3,8 @@ import type { BuyingReport } from './report';
 
 // `live` is retained for isolated legacy VDG helpers, never accepted by the preview API.
 export type DataMode = 'mock' | 'official' | 'live';
-export type ClientRuntimeConfig = { sandboxControls: boolean; officialPreview?: boolean };
+export type ReportAction = 'mock' | 'sandbox' | 'unavailable';
+export type ClientRuntimeConfig = { dataMode: 'mock' | 'connected'; reportAction: ReportAction };
 export type PreviewMotTest = {
   completedDate: string;
   expiryDate?: string;
@@ -24,6 +25,8 @@ export type VehiclePreview = {
   source: DataMode;
   vehicle: {
     name: string;
+    make?: string;
+    model?: string;
     year: number | null;
     registered?: string;
     firstRegistered?: string;

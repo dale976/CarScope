@@ -1,6 +1,6 @@
 import { formatDate, formatRegistration } from '../domain/formatters';
 import { buildMotDisplay, buildTaxDisplay } from '../domain/vehicle-status';
-import type { DataMode, VehiclePreview } from '../shared/preview';
+import type { DataMode, ReportAction, VehiclePreview } from '../shared/preview';
 import { evidenceDate, OfficialEvidence } from './preview/OfficialEvidence';
 
 export function VehiclePreviewCard({
@@ -9,18 +9,24 @@ export function VehiclePreviewCard({
   onGenerate,
   busy,
   mode,
+  reportAction = mode === 'mock' ? 'mock' : 'unavailable',
 }: {
   preview: VehiclePreview;
   onBack: () => void;
   onGenerate: () => void;
   busy: boolean;
   mode: DataMode;
+  reportAction?: ReportAction;
 }) {
   const mot = preview.mot;
   const tax = preview.tax;
   const motDisplay = buildMotDisplay(mot);
   const taxDisplay = buildTaxDisplay(tax);
   const official = preview.source === 'official';
+  const sandbox = official && mode === 'official' && reportAction === 'sandbox';
+  const allowed =
+    (sandbox && preview.registration.includes('A')) ||
+    (preview.source === 'mock' && mode === 'mock' && reportAction === 'mock');
   return (
     <section className="focused-preview" aria-labelledby="preview-title">
       {preview.official?.testData && (
@@ -118,21 +124,35 @@ export function VehiclePreviewCard({
           </p>
         </div>
         <div className="offer-action">
-          <strong>{official ? 'Planned price · £9.99' : '£9.99'}</strong>
+          <strong>
+            {sandbox
+              ? 'No payment · sandbox test'
+              : official
+                ? 'Planned price · £9.99'
+                : 'Example report · no payment'}
+          </strong>
           <button
             className="primary"
             type="button"
-            disabled={busy || mode !== 'mock' || preview.source !== 'mock'}
+            disabled={busy || !allowed}
             onClick={onGenerate}
           >
-            {official
-              ? 'Full report · coming soon'
-              : busy
-                ? 'Preparing report…'
-                : 'View complete report · £9.99'}{' '}
+            {busy
+              ? 'Preparing report…'
+              : sandbox
+                ? 'Generate test report'
+                : official
+                  ? 'Full report · coming soon'
+                  : 'View example report'}{' '}
             <span aria-hidden="true">↗</span>
           </button>
-          {official && (
+          {sandbox && (
+            <small>
+              Explicitly requests a VDG sandbox report. No payment is taken. The sandbox supports
+              registrations containing A; its data is not for purchasing decisions.
+            </small>
+          )}
+          {official && !sandbox && (
             <small>
               Paid reports are not connected yet. No payment or paid data lookup has occurred.
             </small>

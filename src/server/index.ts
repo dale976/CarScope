@@ -1,10 +1,11 @@
-import page from '../client/index.html';
 import { resolve } from 'node:path';
+import page from '../client/index.html';
 import { createReportApi } from './api';
 import { readConfig } from './config';
 import { withResponseHeaders } from './http';
 import { createLogger } from './logger';
 import { createMemoryPreviewSessionStore } from './preview-sessions';
+
 const config = readConfig();
 const logger = createLogger(config);
 const sessions = createMemoryPreviewSessionStore();
@@ -42,5 +43,5 @@ const server =
         },
       });
 console.log(
-  `CarScope buying report: ${server.url} | sandbox ${config.sandbox.enabled ? 'enabled' : 'disabled'}`,
+  `CarScope buying report: ${server.url} | data ${config.dataMode} | report action ${config.client.reportAction}`,
 );

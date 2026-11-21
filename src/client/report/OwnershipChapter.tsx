@@ -1,5 +1,5 @@
 import { formatMoney } from '../../domain/formatters';
-import { buildTaxDisplay } from '../../domain/vehicle-status';
+import { buildReportTaxDisplay } from '../../domain/vehicle-status';
 import type { BuyingReport } from '../../shared/report';
 import { ReportChapter } from './ReportChapter';
 
@@ -103,13 +103,20 @@ export function OwnershipChapter({ report }: { report: BuyingReport }) {
             <>
               <div className={`status-banner ${report.tax.status ?? 'unavailable'}`}>
                 <span>Tax status</span>
-                <strong>{buildTaxDisplay(report.tax).label}</strong>
-                <small>{buildTaxDisplay(report.tax).detail}</small>
+                <strong>{buildReportTaxDisplay(report).label}</strong>
+                <small>{buildReportTaxDisplay(report).detail}</small>
               </div>
-              <p className="data-context">
-                Supplier information ·{' '}
-                {report.tax.date ? `generated ${report.tax.date}` : 'source date unavailable'}
-              </p>
+              {report.tax.officialLookupDate && (
+                <p className="data-context">DVLA status lookup · {report.tax.officialLookupDate}</p>
+              )}
+              {(!report.tax.officialLookupDate ||
+                report.tax.rates.length > 0 ||
+                report.tax.band) && (
+                <p className="data-context">
+                  {report.testReport ? 'VDG sandbox rate information' : 'Supplier information'} ·{' '}
+                  {report.tax.date ? `generated ${report.tax.date}` : 'source date unavailable'}
+                </p>
+              )}
               {report.tax.band && (
                 <p>
                   Band {report.tax.band}

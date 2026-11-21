@@ -1,3 +1,4 @@
+import type { VehiclePreview } from '../../../shared/preview';
 import type { BuyingReport, MotRecord } from '../../../shared/report';
 import type { SupplierRecord } from '../types';
 import { child, day, number, records, text, title, vehicleTitle } from './common';
@@ -28,6 +29,7 @@ export function normaliseVehicle(
   details: SupplierRecord,
   vdi: SupplierRecord | undefined,
   mot: MotRecord[],
+  official?: VehiclePreview,
 ): NormalisedVehicle {
   const vehicleData = child(details, 'VehicleDetails');
   const identification = child(vehicleData, 'VehicleIdentification');
@@ -39,10 +41,13 @@ export function normaliseVehicle(
   const technical = child(vehicleData, 'DvlaTechnicalDetails');
   const make = vehicleTitle(modelId?.Make ?? identification?.DvlaMake);
   const modelName = vehicleTitle(modelId?.Model ?? identification?.DvlaModel);
-  if (!make || !modelName) throw new Error('Vehicle details did not identify the vehicle.');
+  if ((!make || !modelName) && !official?.vehicle.name)
+    throw new Error('Vehicle details did not identify the vehicle.');
   const registered =
     day(identification?.DateFirstRegistered) ?? day(identification?.DateFirstRegisteredInUk) ?? '';
-  const year = number(identification, 'YearOfManufacture') ?? (Number(registered.slice(0, 4)) || 0);
+  const year = official
+    ? (official.vehicle.year ?? number(identification, 'YearOfManufacture') ?? 0)
+    : (number(identification, 'YearOfManufacture') ?? (Number(registered.slice(0, 4)) || 0));
   const colours = child(history, 'ColourDetails');
   const transmission = child(powertrain, 'Transmission');
   const ice = child(powertrain, 'IceDetails');
@@ -60,8 +65,12 @@ export function normaliseVehicle(
   const kerb = number(weights, 'KerbWeightKg');
   const massInService = number(technical, 'MassInServiceKg');
   const latestMileage =
-    [...mot].sort((a, b) => b.date.localeCompare(a.date)).find((item) => item.mileage !== null)
-      ?.mileage ?? null;
+    official?.motHistory !== undefined
+      ? official.recordedMileage?.unit.toLowerCase() === 'mi'
+        ? official.recordedMileage.value
+        : null
+      : ([...mot].sort((a, b) => b.date.localeCompare(a.date)).find((item) => item.mileage !== null)
+          ?.mileage ?? null);
 
   const statusSource =
     child(vdi, 'VehicleTaxDetails') ??
@@ -76,15 +85,20 @@ export function normaliseVehicle(
   const status = taxStatus(statusSource.TaxStatus);
 
   return {
-    vehicle: { name: `${make} ${modelName}`, year, mileage: latestMileage, askingPrice: null },
+    vehicle: {
+      name: make && modelName ? `${make} ${modelName}` : official!.vehicle.name,
+      year: official?.vehicle.year ?? year,
+      mileage: latestMileage,
+      askingPrice: null,
+    },
     detail: {
-      registered,
+      registered: official?.vehicle.firstRegistered ?? registered,
       keepers: records(history?.KeeperChangeList).flatMap((keeper) => {
         const date = day(keeper.KeeperStartDate);
         const previous = number(keeper, 'NumberOfPreviousKeepers');
         return date && previous !== undefined ? [{ date, previous }] : [];
       }),
-      colour: title(colours?.CurrentColour),
+      colour: official?.vehicle.colour ?? title(colours?.CurrentColour),
       originalColour: title(colours?.OriginalColour),
       colourChanges: number(colours, 'NumberOfColourChanges'),
       image: image
@@ -99,7 +113,9 @@ export function normaliseVehicle(
           number(ice, 'EngineCapacityLitres') !== undefined
             ? `${number(ice, 'EngineCapacityLitres')}-litre`
             : undefined,
-          text(powertrain, 'FuelType') ?? text(identification, 'DvlaFuelType'),
+          text(powertrain, 'FuelType') ??
+            text(identification, 'DvlaFuelType') ??
+            official?.vehicle.fuelType,
           number(ice, 'NumberOfCylinders') !== undefined
             ? `${number(ice, 'NumberOfCylinders')} cylinders`
             : undefined,

@@ -1,14 +1,32 @@
 # CarScope launch-readiness plan
 
-Updated: 28 September 2026
+Updated: 21 November 2026 (technical roadmap; commercial assumptions below remain provisional)
 
 ## Where the product stands
 
-CarScope is a polished working prototype with a strong report experience, a free vehicle preview, mock and live supplier modes, and a deterministic buyer briefing. It is not ready to accept public payments until the live data licence, final package cost, consumer terms, report retention rules and failure handling have been agreed.
+CarScope now has a detailed DVLA/DVSA free preview and a connected VDG sandbox
+full-report test journey. Data mode is selected in `.env`; there is no mock/live
+UI toggle. VDG is called only by the explicit test-report action, never for the
+preview. The connected report reuses official evidence and does not request
+CarScopeFree. No payment has occurred in this test journey.
 
-The shortest responsible route is a small private beta, followed by an introductory £6.99 public launch. The long-term price should remain £9.99 unless the final data package makes that uneconomic.
+### Next milestones
 
-The repository is now one buying-report application with a production build, validated configuration, typed supplier boundary, structured API errors, security headers, offline tests and CI. The remaining launch work is primarily commercial agreement and the customer systems listed below; the in-memory preview session is suitable for the current single-process prototype only.
+1. Evaluate the full connected journey on varied eligible sandbox registrations,
+   including incomplete sources, session expiry and repeated clicks.
+2. Meet VDG for an itemized completion-only quote and written coverage/display,
+   retention and resale terms. Official preview access removes the current need
+   to buy preview lookups; package overlap and completion pricing still need confirmation.
+3. Add Stripe test checkout and server-verified, idempotent report fulfilment.
+4. Add durable report storage/access, email delivery, critical-source failure/refund
+   policy, support and deletion workflows.
+5. Add rate/spend controls, operational monitoring and a private beta, then enable
+   paid production fulfilment only after permissions and operating terms are ready.
+
+Sandbox report generation is blocked in production runtime. The current in-memory
+sessions are suitable for single-process testing, not commercial payment recovery.
+The historical £6.99/£9.99 pricing and supplier source list below are proposals
+pending the completion quote, rights and unit-economics review.
 
 ## The immediate sequence
 
@@ -44,8 +62,8 @@ Do not add BatteryDetails unless Vehicle Data Global can identify useful vehicle
 1. What is the exact PAYGO and subscription cost of this package at each volume tier?
 2. Is CarScope charged for every selected source, only sources that return successfully, or also sources that return no records?
 3. What happens commercially when a source times out, fails or returns an incomplete response?
-4. Can the free preview remain a separate low-cost package containing only VehicleDetails, MOT status/history and VehicleTaxDetails?
-5. Can completion of a purchased report request only the sources not already returned by the preview?
+4. Please quote a completion-only package: our free preview now uses DVLA/DVSA, so no VDG preview lookup is required.
+5. Which identity/MOT/tax fields can be omitted from paid completion without losing provenance coverage, and which bundled fields remain billed?
 6. Can duplicate requests for the same registration within a short period reuse a result, and under what retention rules?
 7. Are there account minimums, setup fees, support fees or contract terms beyond the published per-source prices?
 
@@ -104,7 +122,7 @@ Before the meeting, could you please send me the Consumer Terms and Provenance R
 - which finance and provenance fields may be displayed to consumers;
 - any mandatory wording, branding, correction or dispute process;
 - whether a supplier-backed consumer data guarantee is available;
-- whether a separate low-cost preview package can be used before purchase;
+- a completion-only quote now that official DVLA/DVSA sources power the free preview;
 - whether a minimised subset of permitted report facts may be sent to an external AI processor for a real-time plain-English explanation, without training, embeddings or secondary use.
 
 I will bring the proposed report flow and sample screens to the meeting so we can review the intended display and identify any necessary changes.

@@ -16,7 +16,7 @@ test('unsupported explicit environments fail closed', () => {
 });
 
 test('legacy VDG configuration never prevents free previews from starting', () => {
-  expect(readConfig({ VDG_SANDBOX_ENABLED: 'true' }).client.officialPreview).toBe(false);
+  expect(readConfig({ VDG_SANDBOX_ENABLED: 'true' }).client.dataMode).toBe('mock');
   expect(readConfig({ VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'secret' }).sandbox).toEqual({
     enabled: true,
     apiKey: 'secret',
@@ -80,16 +80,31 @@ test('production origin comparison is exact and development stays same-origin', 
 test('configuration resolves the private mock root and exposes safe runtime settings', () => {
   const config = readConfig({ CARSCOPE_ROOT: '/tmp/carscope-test' });
   expect(config.root).toBe('/tmp/carscope-test');
-  expect(config.client).toEqual({ sandboxControls: true, officialPreview: false });
+  expect(config.client).toEqual({ dataMode: 'mock', reportAction: 'mock' });
   expect(readConfig({ NODE_ENV: 'production', VDG_API_KEY: 'secret' }).client).toEqual({
-    sandboxControls: false,
-    officialPreview: false,
+    dataMode: 'mock',
+    reportAction: 'mock',
   });
 });
 
-test('official mode requires explicit opt-in and is never enabled in production', () => {
-  expect(readConfig({ OFFICIAL_PREVIEW_ENABLED: 'true' }).client.officialPreview).toBe(true);
+test('launch data mode is explicit, validated and independent of runtime environment', () => {
+  expect(readConfig({ CARSCOPE_DATA_MODE: 'connected' }).client).toEqual({
+    dataMode: 'connected',
+    reportAction: 'unavailable',
+  });
   expect(
-    readConfig({ NODE_ENV: 'production', OFFICIAL_PREVIEW_ENABLED: 'true' }).client.officialPreview,
-  ).toBe(false);
+    readConfig({ NODE_ENV: 'production', CARSCOPE_DATA_MODE: 'connected' }).official.enabled,
+  ).toBe(true);
+  expect(() => readConfig({ CARSCOPE_DATA_MODE: 'bad' })).toThrow('CARSCOPE_DATA_MODE');
+  expect(readConfig({ OFFICIAL_PREVIEW_ENABLED: 'true' }).client.dataMode).toBe('connected');
+  expect(
+    readConfig({ CARSCOPE_DATA_MODE: 'mock', OFFICIAL_PREVIEW_ENABLED: 'true' }).client.dataMode,
+  ).toBe('mock');
+});
+
+test('sandbox generation is an explicit development-only opt-in with credentials', () => {
+  const env = { CARSCOPE_DATA_MODE: 'connected', VDG_SANDBOX_ENABLED: 'true', VDG_API_KEY: 'key' };
+  expect(readConfig(env).client.reportAction).toBe('sandbox');
+  expect(readConfig({ ...env, NODE_ENV: 'production' }).client.reportAction).toBe('unavailable');
+  expect(() => readConfig({ ...env, VDG_API_KEY: '' })).toThrow('VDG_API_KEY');
 });

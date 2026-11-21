@@ -21,6 +21,7 @@ export function buildBuyerBriefing(report: BuyingReport): BuyerBriefing {
   const significant = (report.historyEvents ?? []).filter((event) => event.significant);
   const incomplete = report.checks.filter((check) => check.status === 'not-checked');
   const sparseOlderHistory =
+    report.vehicle.year > 0 &&
     report.vehicle.year < PRE_DIGITAL_HISTORY_HEURISTIC_YEAR &&
     (mot.length === 0 || motWithMileage < mot.length);
   const priority = financeReturned

@@ -150,6 +150,8 @@ export function createOfficialPreview(options: Options) {
       source: 'official',
       vehicle: {
         name: [a?.make ?? b?.make, b?.model].filter(Boolean).join(' '),
+        make: a?.make ?? b?.make,
+        model: b?.model,
         year: a?.yearOfManufacture ?? yearFromDvsa ?? null,
         firstRegistered: a?.firstRegistered ?? b?.registrationDate,
         colour: a?.colour ?? b?.primaryColour,

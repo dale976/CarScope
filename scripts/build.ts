@@ -14,6 +14,8 @@ export async function buildApplication(root = ROOT): Promise<void> {
       '--target=bun',
       '--outdir=dist',
       '--production',
+      '--define',
+      'CARSCOPE_PRODUCTION_BUILD=true',
       '--minify',
     ],
     { cwd: root, stdin: 'inherit', stdout: 'inherit', stderr: 'inherit' },

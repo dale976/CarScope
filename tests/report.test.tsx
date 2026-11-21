@@ -1,8 +1,10 @@
 import { expect, test } from 'bun:test';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReportView } from '../src/client/report/ReportView';
-import { ReportContent } from '../src/client/ReportContent';
 import { sampleReport } from '../fixtures/sample-report';
+import type { VehiclePreview } from '../src/shared/preview';
+import { ReportContent } from '../src/client/ReportContent';
+import { ReportView } from '../src/client/report/ReportView';
+
 test('sample identifies evidence and never clears unperformed checks', () => {
   const html = renderToStaticMarkup(<ReportView report={sampleReport} />);
   for (const text of [
@@ -448,4 +450,69 @@ test('buyer briefing gives relevant EV questions and states that battery health 
   const briefing = html.slice(html.indexOf('Your buyer briefing'), html.indexOf('Vehicle details'));
   expect(briefing).toContain('Battery health is not measured by these records');
   expect(briefing).toContain('Ask for a current battery-health assessment');
+});
+
+test('sandbox generated report is labelled as a test with no payment', () => {
+  const html = renderToStaticMarkup(<ReportView report={{ ...sampleReport, testReport: true }} />);
+  expect(html).toContain('VDG sandbox');
+  expect(html).toContain('No payment');
+});
+test('month-only first registration is displayed without inventing a day', () => {
+  const html = renderToStaticMarkup(
+    <ReportView report={{ ...sampleReport, detail: { registered: '2022-05', keepers: [] } }} />,
+  );
+  expect(html).toContain('May 2022');
+  expect(html).not.toContain('1 May 2022');
+});
+
+test('connected header uses the latest official odometer with its original unit and date', () => {
+  const original: VehiclePreview = {
+    previewId: 'x',
+    registration: 'YJ22ACU',
+    source: 'official',
+    vehicle: { name: 'LOTUS EXIGE', year: 2022 },
+    coverage: { message: '2 MOT tests returned' },
+    recordedMileage: { value: 9000, unit: 'KM', date: '2026-11-20T12:00:00' },
+  };
+  const html = renderToStaticMarkup(
+    <ReportView
+      report={{
+        ...sampleReport,
+        officialPreview: original,
+        vehicle: { ...sampleReport.vehicle, mileage: 8541 },
+      }}
+    />,
+  );
+  const start = html.indexOf('class="vehicle-bar"');
+  const header = html.slice(start, html.indexOf('</section>', start));
+  expect(header).toContain('9,000');
+  expect(header).toContain('KM');
+  expect(header).toContain('20 Nov 2026');
+  expect(header).not.toContain('8,541');
+});
+test('unknown manufacture year cannot imply age, import status or first MOT not yet due', () => {
+  const officialPreview: VehiclePreview = {
+    previewId: 'x',
+    registration: 'YJ22ACU',
+    source: 'official',
+    vehicle: { name: 'LOTUS EXIGE', year: null },
+    mot: { status: 'unavailable' },
+    coverage: { message: 'No history returned' },
+  };
+  const html = renderToStaticMarkup(
+    <ReportView
+      report={{
+        ...sampleReport,
+        officialPreview,
+        vehicle: { ...sampleReport.vehicle, year: 0 },
+        detail: { registered: '2025-02-01', keepers: [] },
+        motStatus: { status: 'unavailable', source: 'derived' },
+        evidence: { mot: [], notes: [], tyres: [] },
+      }}
+    />,
+  );
+  expect(html).toContain('Year unavailable');
+  expect(html).not.toContain('This older vehicle');
+  expect(html).not.toContain('This 0 vehicle');
+  expect(html).not.toContain('First MOT not yet due');
 });

@@ -28,7 +28,7 @@ test('focused preview shows returned evidence and the planned price without paid
     'MOT valid',
     '8 MOT tests returned',
     'Complete buying report',
-    '£9.99',
+    'View example report',
   ])
     expect(html).toContain(text);
   expect(html).toContain('class="preview-status" data-state="valid"');
@@ -220,4 +220,21 @@ test('an official preview can never enable payment when displayed under a stale 
   );
   expect(html).toContain('disabled');
   expect(html).not.toContain('View complete report · £9.99');
+});
+
+test('configured sandbox report action is explicit and never implies payment', () => {
+  const html = renderToStaticMarkup(
+    <VehiclePreviewCard
+      preview={{ ...preview, source: 'official' }}
+      mode="official"
+      reportAction="sandbox"
+      busy={false}
+      onBack={() => {}}
+      onGenerate={() => {}}
+    />,
+  );
+  expect(html).toContain('Generate test report');
+  expect(html).toContain('No payment');
+  expect(html).not.toContain('disabled');
+  expect(html).not.toContain('£9.99');
 });

@@ -1,16 +1,8 @@
-import { formatUkDate } from '../../shared/date';
+import { formatEvidenceDate as evidenceDate } from '../../shared/date';
 import type { VehiclePreview } from '../../shared/preview';
 
-export function evidenceDate(value: string): string {
-  if (/^\d{4}-(0[1-9]|1[0-2])$/.test(value)) {
-    return new Intl.DateTimeFormat('en-GB', {
-      month: 'short',
-      year: 'numeric',
-      timeZone: 'UTC',
-    }).format(new Date(`${value}-01T00:00:00Z`));
-  }
-  return formatUkDate(value.replace(' ', 'T')) ?? 'Date unavailable';
-}
+export { evidenceDate };
+
 const sourceLabels = {
   available: 'Records returned',
   unavailable: 'Unavailable',

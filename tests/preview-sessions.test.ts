@@ -56,3 +56,44 @@ test('completion coalesces concurrent work and clears a rejected attempt', async
   await sessions.complete(retryId, 'mock', 'LD17VAE', complete);
   expect(calls).toBe(2);
 });
+
+test('official sessions cache completed reports and failed attempts without repeat spending', async () => {
+  const sessions = createMemoryPreviewSessionStore();
+  const preview = {
+    previewId: '',
+    source: 'official' as const,
+    registration: 'LD17VAE',
+    vehicle: { name: 'TESLA MODEL X', year: 2017 },
+    coverage: { message: 'Unknown' },
+  };
+  const id = await sessions.create({ mode: 'official', registration: 'LD17VAE', preview });
+  let calls = 0;
+  const work = async () => {
+    calls++;
+    return sampleReport;
+  };
+  await sessions.complete(id, 'official', 'LD17VAE', work);
+  await sessions.complete(id, 'official', 'LD17VAE', work);
+  expect(calls).toBe(1);
+  const failed = await sessions.create({ mode: 'official', registration: 'LD17VAE', preview });
+  const fail = async () => {
+    calls++;
+    throw new Error('partial supplier failure');
+  };
+  await expect(sessions.complete(failed, 'official', 'LD17VAE', fail)).rejects.toThrow(
+    'partial supplier failure',
+  );
+  await expect(sessions.complete(failed, 'official', 'LD17VAE', fail)).rejects.toThrow(
+    'partial supplier failure',
+  );
+  expect(calls).toBe(2);
+});
+test('preview expires at the exact TTL boundary', async () => {
+  let now = 0;
+  const sessions = createMemoryPreviewSessionStore({ now: () => now, ttlMs: 1000 });
+  const id = await sessions.create({ mode: 'mock', registration: 'LD17VAE', report: sampleReport });
+  now = 1000;
+  await expect(sessions.complete(id, 'mock', 'LD17VAE', async () => sampleReport)).rejects.toThrow(
+    'expired',
+  );
+});

@@ -1,14 +1,16 @@
-import type { BuyingReport } from '../../shared/report';
-import { formatRegistration } from '../../domain/formatters';
-import { VehiclePortrait } from '../VehicleStory';
 import { buildBuyerBriefing } from '../../domain/buyer-briefing';
+import { formatRegistration } from '../../domain/formatters';
 import { buildRecordOverview } from '../../domain/record-overview';
+import type { BuyingReport } from '../../shared/report';
+import { OfficialEvidence } from '../preview/OfficialEvidence';
+import { formatEvidenceDate } from '../../shared/date';
+import { VehiclePortrait } from '../VehicleStory';
+import { BeforeYouBuyChapter } from './BeforeYouBuyChapter';
 import { BuyerBriefingView } from './BuyerBriefing';
-import { RecordOverview } from './RecordOverview';
-import { VehicleDetailsChapter } from './VehicleDetailsChapter';
 import { HistoryChapter } from './HistoryChapter';
 import { OwnershipChapter } from './OwnershipChapter';
-import { BeforeYouBuyChapter } from './BeforeYouBuyChapter';
+import { RecordOverview } from './RecordOverview';
+import { VehicleDetailsChapter } from './VehicleDetailsChapter';
 export function ReportView({ report }: { report: BuyingReport }) {
   const latestMotMileage = [...(report.evidence?.mot ?? [])]
     .sort((a, b) => b.date.localeCompare(a.date))
@@ -19,6 +21,15 @@ export function ReportView({ report }: { report: BuyingReport }) {
       : 'Supplied report mileage';
   return (
     <article className="report" aria-labelledby="report-title">
+      {report.testReport && (
+        <div className="preview-test-notice" role="note">
+          <strong>VDG sandbox test report · No payment taken</strong>
+          <p>
+            Official preview evidence is retained separately below. VDG enrichment may be up to 12
+            months old and must not be used for purchasing decisions.
+          </p>
+        </div>
+      )}
       {report.kind === 'fictional-sample' && (
         <div className="sample-note">
           <span className="status-dot" /> Fictional sample — no vehicle checks have been performed.
@@ -55,8 +66,20 @@ export function ReportView({ report }: { report: BuyingReport }) {
             <h2>{report.vehicle.name}</h2>
           </div>
           <p>
-            {report.vehicle.year} <span aria-hidden="true">/</span>{' '}
-            {report.vehicle.mileage === null ? (
+            {report.vehicle.year > 0 ? report.vehicle.year : 'Year unavailable'}{' '}
+            <span aria-hidden="true">/</span>{' '}
+            {report.officialPreview ? (
+              report.officialPreview.recordedMileage ? (
+                <>
+                  {report.officialPreview.recordedMileage.value.toLocaleString('en-GB')}{' '}
+                  {report.officialPreview.recordedMileage.unit} <span aria-hidden="true">/</span>{' '}
+                  Recorded {formatEvidenceDate(report.officialPreview.recordedMileage.date)} · not
+                  current mileage
+                </>
+              ) : (
+                'Recorded mileage unavailable'
+              )
+            ) : report.vehicle.mileage === null ? (
               'Mileage unavailable'
             ) : (
               <>
@@ -79,6 +102,12 @@ export function ReportView({ report }: { report: BuyingReport }) {
       <HistoryChapter report={report} />
       <OwnershipChapter report={report} />
       <BeforeYouBuyChapter report={report} />
+      {report.officialPreview && (
+        <details className="preview-detail-section">
+          <summary>View the retained DVLA/DVSA preview evidence and sources</summary>
+          <OfficialEvidence preview={report.officialPreview} />
+        </details>
+      )}
       {report.evidence && (
         <section className="report-section">
           <h2>Sources, gaps and assumptions</h2>

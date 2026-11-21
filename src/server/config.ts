@@ -1,11 +1,17 @@
 import { resolve } from 'node:path';
+import type { ClientRuntimeConfig } from '../shared/preview';
 import { type DvlaConfig, readDvlaConfig } from './dvla/client';
 import { type DvsaConfig, readDvsaConfig } from './dvsa/client';
 
-export type ClientRuntimeConfig = { sandboxControls: boolean; officialPreview?: boolean };
+export type { ClientRuntimeConfig } from '../shared/preview';
+
+declare const CARSCOPE_PRODUCTION_BUILD: boolean;
+const productionBuild =
+  typeof CARSCOPE_PRODUCTION_BUILD !== 'undefined' && CARSCOPE_PRODUCTION_BUILD;
 
 export type ServerConfig = {
   environment: 'development' | 'test' | 'production';
+  dataMode: 'mock' | 'connected';
   host: string;
   port: number;
   publicOrigin?: string;
@@ -53,13 +59,19 @@ function publicOrigin(value: string | undefined) {
 }
 
 export function readConfig(env: Record<string, string | undefined> = process.env): ServerConfig {
-  const runtime = environment(env.NODE_ENV);
+  const runtime = productionBuild ? 'production' : environment(env.NODE_ENV);
   const host = env.HOST ?? '127.0.0.1';
   const origin = publicOrigin(env.PUBLIC_ORIGIN);
   const sandboxEnabled = env.VDG_SANDBOX_ENABLED === 'true';
   if (runtime === 'production' && !loopbackHosts.has(host) && !origin)
     throw new Error('PUBLIC_ORIGIN is required for a non-loopback production host.');
-  const officialEnabled = env.OFFICIAL_PREVIEW_ENABLED === 'true' && runtime !== 'production';
+  const dataMode =
+    env.CARSCOPE_DATA_MODE ?? (env.OFFICIAL_PREVIEW_ENABLED === 'true' ? 'connected' : 'mock');
+  if (dataMode !== 'mock' && dataMode !== 'connected')
+    throw new Error('CARSCOPE_DATA_MODE must be mock or connected.');
+  const officialEnabled = dataMode === 'connected';
+  if (officialEnabled && sandboxEnabled && runtime !== 'production' && !env.VDG_API_KEY?.trim())
+    throw new Error('VDG_API_KEY is required for sandbox report testing.');
   const dvlaKey =
     env.DVLA_ENVIRONMENT === 'production' ? env.DVLA_PROD_API_KEY : env.DVLA_TEST_API_KEY;
   const dvla =
@@ -79,13 +91,22 @@ export function readConfig(env: Record<string, string | undefined> = process.env
       : undefined;
   return {
     environment: runtime,
+    dataMode,
     host,
     port: port(env.PORT ?? env.REPORT_PORT),
     publicOrigin: origin,
     sandbox: { enabled: sandboxEnabled, apiKey: env.VDG_API_KEY },
     official: { enabled: officialEnabled, dvla, dvsa },
     root: resolve(env.CARSCOPE_ROOT ?? process.cwd()),
-    client: { sandboxControls: runtime !== 'production', officialPreview: officialEnabled },
+    client: {
+      dataMode,
+      reportAction:
+        dataMode === 'mock'
+          ? 'mock'
+          : runtime !== 'production' && sandboxEnabled
+            ? 'sandbox'
+            : 'unavailable',
+    },
   };
 }
 

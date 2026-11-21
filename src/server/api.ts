@@ -11,6 +11,7 @@ import type { Logger } from './logger';
 import { loadMockReport } from './mock-reports';
 import { createOfficialPreview } from './official-preview';
 import { createMemoryPreviewSessionStore, type PreviewSessionStore } from './preview-sessions';
+import { generateSandboxReport } from './sandbox-report';
 
 type Options = {
   config?: ServerConfig;
@@ -19,6 +20,7 @@ type Options = {
   loadMock?: (registration: string) => BuyingReport;
   completeMock?: (report: BuyingReport) => Promise<BuyingReport>;
   identifyOfficial?: (registration: string) => Promise<VehiclePreview>;
+  completeOfficial?: (registration: string, preview: VehiclePreview) => Promise<BuyingReport>;
 };
 
 const quietLogger: Logger = { info() {}, error() {} };
@@ -50,6 +52,10 @@ export function createReportApi(options: Options = {}) {
   const sessions = options.sessions ?? createMemoryPreviewSessionStore();
   const loadMock = options.loadMock ?? ((value: string) => loadMockReport(value, config.root));
   const completeMock = options.completeMock ?? (async (report) => report);
+  const completeOfficial =
+    options.completeOfficial ??
+    ((registration: string, preview: VehiclePreview) =>
+      generateSandboxReport(registration, preview, { apiKey: config.sandbox.apiKey! }));
   const identifyOfficial =
     options.identifyOfficial ??
     createOfficialPreview({
@@ -83,9 +89,15 @@ export function createReportApi(options: Options = {}) {
       if (!isAllowedOrigin(request, config))
         throw new AppError('ORIGIN_FORBIDDEN', 403, 'Request origin is not allowed.');
       const input = await body(request);
-      const mode = input.mode;
-      if (mode !== 'mock' && mode !== 'official')
+      const mode = config.dataMode === 'mock' ? 'mock' : 'official';
+      if (input.mode !== undefined && input.mode !== 'mock' && input.mode !== 'official')
         throw new AppError('INVALID_MODE', 422, 'Choose mock or official data mode.');
+      if (input.mode !== undefined && input.mode !== mode)
+        throw new AppError(
+          'DATA_MODE_MISMATCH',
+          422,
+          'Data source is selected by the server launch configuration. Refresh the page.',
+        );
       const reg = registration(input.registration);
       if (path === '/api/report-preview') {
         if (mode === 'mock') {
@@ -93,11 +105,26 @@ export function createReportApi(options: Options = {}) {
           const previewId = await sessions.create({ mode, registration: reg, report });
           return json(projectReportPreview(report, previewId, mode));
         }
-        if (config.environment === 'production' || !config.official.enabled)
+        if (!config.official.enabled)
           throw new AppError('OFFICIAL_UNAVAILABLE', 503, 'Official preview is not enabled.');
-        return json(await identifyOfficial(reg));
+        const identified = await identifyOfficial(reg);
+        if (identified.registration !== reg || identified.source !== 'official')
+          throw new AppError(
+            'IDENTITY_MISMATCH',
+            502,
+            'Official preview identity does not match the request.',
+          );
+        const previewId = await sessions.create({
+          mode: 'official',
+          registration: reg,
+          preview: identified,
+        });
+        return json({ ...identified, previewId });
       }
-      if (mode === 'official')
+      if (
+        mode === 'official' &&
+        (config.environment === 'production' || !config.sandbox.enabled || !config.sandbox.apiKey)
+      )
         throw new AppError(
           'PAID_REPORT_UNAVAILABLE',
           409,
@@ -111,7 +138,9 @@ export function createReportApi(options: Options = {}) {
           'Preview expired or unavailable. Identify the vehicle again.',
         );
       const report = await sessions.complete(previewId, mode, reg, async (session) =>
-        completeMock(session.report),
+        session.mode === 'mock'
+          ? completeMock(session.report)
+          : completeOfficial(reg, session.preview),
       );
       return json(report);
     } catch (error) {

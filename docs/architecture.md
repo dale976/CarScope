@@ -23,21 +23,30 @@ React client ── same-origin JSON ──> Bun API ──> mock report files
 
 ## Request flow
 
-`POST /api/report-preview` accepts `mock` or `official`, never VDG `live` mode.
-Mock projects an allowlisted local report and creates an opaque 30-minute demo session.
-Official mode is explicitly enabled in development/test and denied server-side in
-production. It requests configured DVLA/DVSA sources concurrently, validates identity,
-and returns normalized facts, MOT history, source states and UAT notices. Partial
-success exposes gaps; identity conflicts stop merging. No paid fallback or retries.
-The per-instance DVLA client rejects requests less than 500ms apart without queuing.
+The server selects sources using `CARSCOPE_DATA_MODE=mock|connected`, independently
+of `NODE_ENV` and `DVLA_ENVIRONMENT`. There is no UI source toggle. Runtime config
+exposes only the configured data mode and report action. A missing config response
+stops the form; browser input cannot override the server's mode.
 
-`POST /api/report-generate` completes mock sessions only. Official mode returns
-`PAID_REPORT_UNAVAILABLE` before session or supplier work. The browser disables its
-full-report action until paid fulfilment exists. No VDG import is reachable from
-this API. Isolated legacy VDG helpers remain for future paid-report work and tests.
+`POST /api/report-preview` accepts a registration and creates an opaque 30-minute
+session. Mock uses local data. Connected mode calls DVLA/DVSA only, validates and
+retains normalized official evidence, and never invokes VDG. Connected previews
+are available in production runtime; UAT records are clearly marked as test data.
+Legacy mismatching mode requests are rejected before provider work.
 
-Mock completion sessions expire after 30 minutes, coalesce concurrent completions
-and are removed after success. Durable payment/report storage is future work.
+`POST /api/report-generate` requires a matching session and registration. Mock
+completes locally. Connected sandbox reports require explicit configuration and
+are denied in production until verified payment/production fulfilment exists.
+The test-report action requests VDICheck, validates returned identity where present,
+then requests ValuationDetails and TyreDetails concurrently. No CarScopeFree request
+is made. Official MOT/tax/identity evidence is reused where available and retained
+alongside clearly identified VDG sandbox enrichment. Missing/malformed provenance
+stays not checked; optional failures produce gaps. There are no automatic retries.
+
+Concurrent completion coalesces. Successful official-session reports are cached
+until expiry, and failed official attempts remain failed to prevent repeated partial
+spend. Sessions are in-memory and restart-sensitive: durable payment/report records
+and shared idempotency are required for commercial fulfilment.
 
 ## HTTP and operational policy
 
@@ -50,7 +59,7 @@ and are removed after success. Durable payment/report storage is future work.
 
 ## Configuration policy
 
-Configuration is parsed once by `src/server/config.ts`. Official mode uses server-only DVLA/DVSA credentials. Missing sources remain unconfigured and do not prevent offline startup. Production hides the development data-source selector and rejects official lookups. Non-loopback production startup fails closed without a valid public origin.
+Configuration is parsed once by `src/server/config.ts`. Official mode uses server-only DVLA/DVSA credentials. Missing sources remain unconfigured and do not prevent offline startup. The server chooses sources at launch. Production permits connected previews but rejects sandbox report generation. Non-loopback production startup fails closed without a valid public origin.
 
 The application remains usable without an `.env` file. `.env` and private `.local/` examples are ignored; `.env.example` contains names and safe defaults only.
 

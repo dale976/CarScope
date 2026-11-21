@@ -28,12 +28,12 @@ async function post<T>(path: string, value: unknown): Promise<T> {
 }
 
 export function App({
-  runtimeConfig = { sandboxControls: true },
+  runtimeConfig = { dataMode: 'mock', reportAction: 'mock' },
 }: {
   runtimeConfig?: ClientRuntimeConfig;
 }) {
   const [stage, setStage] = useState<Stage>('registration');
-  const [mode, setMode] = useState<DataMode>('mock');
+  const mode: DataMode = runtimeConfig.dataMode === 'connected' ? 'official' : 'mock';
   const [registration, setRegistration] = useState('');
   const [preview, setPreview] = useState<VehiclePreview | null>(null);
   const [report, setReport] = useState<BuyingReport | null>(null);
@@ -52,12 +52,6 @@ export function App({
     setError('');
     setStage('registration');
   }
-  function chooseMode(value: DataMode) {
-    if (value === mode) return;
-    setMode(value);
-    setRegistration('');
-    clearResults();
-  }
   function changeRegistration(value: string) {
     requests.current.invalidate();
     setRegistration(value.toUpperCase());
@@ -74,7 +68,7 @@ export function App({
     setReport(null);
     setStage('identifying');
     await requests.current.run(
-      () => post<VehiclePreview>('/api/report-preview', { mode, registration }),
+      () => post<VehiclePreview>('/api/report-preview', { registration }),
       (value) => {
         setPreview(value);
         setRegistration(value.registration);
@@ -91,13 +85,12 @@ export function App({
       setStage('report');
       return;
     }
-    if (preview?.source !== 'mock' || mode !== 'mock') return;
+    if (!preview || runtimeConfig.reportAction === 'unavailable' || preview.source !== mode) return;
     setError('');
     setStage('generating');
     await requests.current.run(
       () =>
         post<BuyingReport>('/api/report-generate', {
-          mode,
           registration: preview.registration,
           previewId: preview.previewId,
         }),
@@ -124,24 +117,14 @@ export function App({
           </span>
         </a>
         <span className="product-name">Vehicle buying reports</span>
-        {runtimeConfig.sandboxControls && (
-          <div className="mode-toggle" role="group" aria-label="Data source">
-            <button type="button" aria-pressed={mode === 'mock'} onClick={() => chooseMode('mock')}>
-              Mock
-            </button>
-            {runtimeConfig.officialPreview && (
-              <button
-                type="button"
-                aria-pressed={mode === 'official'}
-                onClick={() => chooseMode('official')}
-              >
-                DVLA + DVSA
-              </button>
-            )}
-          </div>
-        )}
       </header>
       <main id="main">
+        {runtimeConfig.reportAction === 'sandbox' && (
+          <p className="preview-test-notice" role="note">
+            Sandbox report testing · no payment is taken. VDG test data may be up to 12 months old
+            and is not for purchasing decisions.
+          </p>
+        )}
         <nav aria-label="Report progress" className="journey-progress">
           <span
             aria-current={stage === 'registration' || stage === 'identifying' ? 'step' : undefined}
@@ -169,6 +152,7 @@ export function App({
             <PreviewStep
               preview={preview}
               mode={mode}
+              reportAction={runtimeConfig.reportAction}
               busy={busy}
               error={error}
               onBack={clearResults}

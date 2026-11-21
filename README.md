@@ -61,47 +61,57 @@ make DVSA requests. The optional combined preview below reuses this client; DVLA
 
 See [the DVSA data review](docs/dvsa-data-review.md) for observed coverage and limitations.
 
-## Combined official free preview
+## Launch settings and full-journey testing
 
-The free preview uses DVLA Vehicle Enquiry Service and DVSA MOT History, **never VDG**.
-Mock mode remains the offline default. To enable the development source selector:
+Data sources are selected **on the server at launch**, never through a browser toggle.
+Keep these settings in your ignored `.env` file and restart the server after changes.
 
 ```dotenv
-OFFICIAL_PREVIEW_ENABLED=true
-DVLA_ENVIRONMENT=development
-DVLA_TEST_API_KEY=your_test_key
-DVLA_PROD_API_KEY=your_production_key
+NODE_ENV=development
+CARSCOPE_DATA_MODE=connected
+DVLA_ENVIRONMENT=production
+VDG_SANDBOX_ENABLED=true
 ```
 
-Enter keys only in the ignored `.env` file or secure runtime settings. `DVLA_API_KEY`
-is supported as a single-key fallback. `development` selects the DVLA UAT endpoint
-with predefined responses; select `production` to use real VES data with its matching
-key. This does not change `NODE_ENV`: official preview mode is currently denied
-server-side in production application environments.
+- `CARSCOPE_DATA_MODE=mock`: offline preview and report examples; no supplier requests.
+- `CARSCOPE_DATA_MODE=connected`: DVLA/DVSA free preview, with explicit sandbox report
+  generation when enabled. No VDG call is made during the preview.
+- `NODE_ENV=development`: hot reload and optional sandbox report testing.
+- `NODE_ENV=production`: production runtime; connected preview works, but sandbox
+  generation is blocked because verified payment/production fulfilment is not built.
+- `DVLA_ENVIRONMENT=production`: real VES using `DVLA_PROD_API_KEY`.
+  `development` selects UAT predefined responses using `DVLA_TEST_API_KEY`.
+  `DVLA_API_KEY` remains a single-key compatibility fallback.
 
-DVSA requires `DVSA_CLIENT_ID`, `DVSA_CLIENT_SECRET`, `DVSA_API_KEY`, `DVSA_SCOPE`
-and `DVSA_TOKEN_URL` as described above. The official preview can show a partial
-result when only one source returns validated identity, with gaps labelled explicitly.
-When using DVLA UAT, the page prominently warns that the combined preview contains
-test data. Selecting a data source makes no request; submitting the registration does.
+Configure your existing five DVSA settings and `VDG_API_KEY` securely in `.env`.
+Keys are server-only; `.env.example` contains only blank placeholders.
+The older `OFFICIAL_PREVIEW_ENABLED=true` still selects connected mode only if
+`CARSCOPE_DATA_MODE` is absent. New setups should use `CARSCOPE_DATA_MODE` explicitly.
 
-The preview includes returned identity and tax details, MOT status, dated recorded
-mileage, full returned MOT history and defects, and additional DVLA facts where
-available. It preserves date precision and odometer units. Missing history is not
-an empty history, and neither proves a vehicle's condition. DVLA requests are spaced
-at least 500ms apart per application instance, without a request queue or retries.
+Run `bun install --frozen-lockfile`, then `bun run dev` (or `npm run dev` when Bun
+is available). Enter a registration. The preview contains official identity/tax
+facts, dated mileage and full returned MOT history, with gaps and UAT data labelled.
+Click **Generate test report** to request VDG sandbox data. No payment is taken.
+Sandbox registrations must contain **A**; data can be up to 12 months old and must
+not be used for purchasing decisions or commercially.
 
-### Paid-report boundary
+The completion path requests `VDICheck` first, then `ValuationDetails` and
+`TyreDetails` concurrently. It **does not call `CarScopeFree`**. Official identity,
+MOT history and tax evidence are reused where available, and the original preview
+remains accessible in the report. Missing provenance is not described as clear.
+Optional failures remain explicit gaps; required failure stops completion.
 
-VDG is reserved for a future paid full-report fulfilment flow. Neither free-preview
-mode can call it, and old `live` API mode requests are rejected. The official
-preview's full-report action is disabled: no payment or paid lookup occurs.
-Mock mode still supports the offline full-report demonstration.
+A 30-minute opaque preview session binds completion to the registration. Concurrent
+and repeated successful generation requests reuse the result without new supplier
+calls. A failed sandbox attempt also stays failed for that session to avoid repeating
+partial supplier spend. Start a fresh preview only when deliberately trying again.
+Sessions are in memory, expire, and are lost on restart; production payment and
+fulfilment require durable shared idempotency and secure report storage.
 
-Existing VDG sandbox provider helpers and their offline tests remain isolated in
-`src/server/provider/`; they are not wired to the public preview/generation API.
-Payment verification, supplier permissions and paid fulfilment must be implemented
-before enabling customer report purchases. No automatic paid fallback exists.
+The browser cannot change launch mode. Missing runtime configuration prevents a
+lookup rather than silently switching data sources. Tests, builds, health checks
+and smoke checks make no supplier requests; smoke explicitly forces mock mode.
+No automatic retries or paid fallback exist.
 
 ## Configuration
 
@@ -111,14 +121,15 @@ before enabling customer report purchases. No automatic paid fallback exists.
 | `PORT` | `9000` | Canonical HTTP port |
 | `REPORT_PORT` | unset | Backwards-compatible port fallback |
 | `PUBLIC_ORIGIN` | unset | Exact public origin required for a non-loopback production host |
-| `OFFICIAL_PREVIEW_ENABLED` | `false` | Enables the combined free preview in development/test only |
+| `NODE_ENV` | `development` | Development runtime or production build/server |
+| `CARSCOPE_DATA_MODE` | `mock` | Server-selected `mock` or `connected` journey |
 | `DVLA_ENVIRONMENT` | `development` | DVLA UAT (`development`) or real VES (`production`) |
 | `DVLA_TEST_API_KEY`, `DVLA_PROD_API_KEY` | unset | Server-only keys selected by DVLA environment |
 | `DVLA_API_KEY` | unset | Single-key compatibility fallback |
-| `VDG_SANDBOX_ENABLED` | `false` | Reserved legacy sandbox configuration; no preview path |
+| `VDG_SANDBOX_ENABLED` | `false` | Explicit development/test full-report sandbox opt-in |
 | `VDG_API_KEY` | unset | Server-only supplier sandbox key |
 
-Production hides development data-source controls and denies official preview requests. Keep `.env`, `.local/`, provider responses and credentials out of Git.
+There are no data-source controls in the UI. Production can serve connected previews but denies sandbox report generation. Keep `.env`, `.local/`, provider responses and credentials out of Git.
 
 ## Structure
 
@@ -141,15 +152,10 @@ See [docs/architecture.md](docs/architecture.md) for the runtime boundaries and 
 
 CarScope is licensed under the [MIT Licence](LICENSE).
 
-### Local preview test
+### Required network destinations
 
-Run `bun install --frozen-lockfile`, then `bun run dev`. Select **DVLA + DVSA**
-in the development source selector and submit a registration. For a real vehicle,
-set `DVLA_ENVIRONMENT=production` and use `DVLA_PROD_API_KEY`; `development`
-uses DVLA's predefined UAT test registrations. This setting is separate from
-`NODE_ENV`, which must remain `development` for the official preview.
-
-Network access must permit `uat.driver-vehicle-licensing.api.gov.uk` (UAT) or
+Connected mode requires `uat.driver-vehicle-licensing.api.gov.uk` (UAT) or
 `driver-vehicle-licensing.api.gov.uk` (production VES), plus
-`login.microsoftonline.com` and `history.mot.api.gov.uk` for DVSA. Tests, build
-and smoke never require these services or make live requests.
+`login.microsoftonline.com` and `history.mot.api.gov.uk` for DVSA. Explicit sandbox
+report generation additionally requires `uk.api.vehicledataglobal.com`.
+Tests and smoke never require these services or make live requests.
